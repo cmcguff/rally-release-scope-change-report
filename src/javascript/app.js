@@ -3,9 +3,20 @@ Ext.define('CustomApp', {
     componentCls: 'app',
     prefixes: {},
     preliminary_estimates: {},
-    show_types: ['PortfolioItem'],
-/*    show_types: ['HierarchicalRequirement','Defect','PortfolioItem'], */
-    alternate_pi_size_field: 'c_PIPlanEstimate',
+    iterations: {},
+    visibleIterations: {},
+    releaseStartDate: '',
+    releaseEndDate: '',
+
+    /* CM process for user stories and defects */
+    /* TODO make this switchable between features and backlog items */
+    show_types: ['HierarchicalRequirement','Defect'],
+    /*  show_types: ['HierarchicalRequirement','Defect','PortfolioItem'], */
+    /* 
+        CM use this for portfolio item sizing if required...
+        alternate_pi_size_field: 'c_PIPlanEstimate', 
+    */
+    alternate_pi_size_field: 'PlanEstimate',
     logger: new Rally.technicalservices.Logger(),
     items: [
         {xtype:'container',itemId:'header_box', defaults: { padding: 5, margin: 5}, layout: { type: 'hbox'}, items:[
@@ -18,7 +29,7 @@ Ext.define('CustomApp', {
     ],
     launch: function() {
         this.logger.log("Launched with this context ", this.getContext());
-        Deft.Chain.pipeline([this._setPrefixes, this._setPreliminaryEstimates],this).then({
+        Deft.Chain.pipeline([this._setPrefixes, this._setPreliminaryEstimates, this._getIterations],this).then({
             scope: this,
             success: function(throw_away) {
                 this._addReleaseBox();
@@ -87,6 +98,45 @@ Ext.define('CustomApp', {
         });
         return deferred;
     },
+    _getIterations: function() {
+        this.logger.log("_getIterations");
+        var me = this;
+        var deferred = Ext.create('Deft.Deferred');
+        Ext.create('Rally.data.wsapi.Store',{
+            model:'Iteration',
+            autoLoad: true,
+            fetch: ['ObjectID', 'Name', 'StartDate', 'EndDate'],
+            sorters: [
+                {property: 'EndDate', direction: 'ASC'}
+            ],            
+            listeners: {
+                scope: this,
+                load: function(store,records,successful){
+                    if ( ! successful ) {
+                        deferred.reject("There was a problem getting the list of Iterations.");
+                    } else {
+                        var iterations = [];
+                        Ext.Array.each(records,function(record){
+                            var id = record.get('ObjectID');
+                            var name = record.get('Name');
+                            var startDate = record.get('StartDate');
+                            var endDate = record.get('EndDate');
+                            var include = false;
+                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include});    
+                            console.info('ID: ', id, 
+                                '  Name: ', name,  
+                                '  StartDate: ', startDate,                           
+                                '  EndDate: ', endDate,
+                                '  Include: ', include);
+                        });
+                        this.iterations = iterations;
+                        deferred.resolve([]);
+                    }
+                }
+            }
+        });
+        return deferred;
+    },    
     _addReleaseBox: function() {
         this.down('#release_selector_box').add({
             xtype:'rallyreleasecombobox',
@@ -114,6 +164,8 @@ Ext.define('CustomApp', {
         var end_js    = release.get('ReleaseDate');
         var end_iso   = Rally.util.DateTime.toIsoString(end_js).replace(/T.*$/,"");
         
+        this.releaseStartDate = start_iso;
+
         var number_of_days_in_release = Rally.technicalservices.util.Utilities.daysBetween(start_js,end_js) + 1 ;
         var number_of_days_remaining_in_release = Rally.technicalservices.util.Utilities.daysBetween(today,end_js) + 1 ;
         
@@ -145,8 +197,28 @@ Ext.define('CustomApp', {
             this.release_name = release.get('Name');
             this.start_date = start_js;
             this.end_date = end_js;
-            
-            Deft.Chain.pipeline([this._getScopedReleases, this._getSnaps, this._processSnaps, this._makeGrids],this).then({
+
+            /* CM mark the iterations that fall within this release */
+            var visibleIterations = []; 
+            Ext.Array.each(this.iterations,function(iteration){
+                if ( iteration.StartDate < start_js ) // iteration started before the release did
+                    if ( iteration.EndDate < start_js ) // iteration started and ended before the release started
+                        iteration.Include = false;
+                    else // release started mid iteration
+                        iteration.Include = true;
+                else // iteration started after the release did    
+                    if ( iteration.EndDate < end_js ) // this iteration completed before the release
+                        iteration.Include = true;
+                    else // iteration ended after the release
+                        iteration.Include = false;
+                
+                if (iteration.Include)
+                    visibleIterations.push(iteration);    
+            });
+            this.visibleIterations = visibleIterations;    
+
+            /* CM add new link in the chain to effectively pivot the output from _processSnaps with _pivotSnaps */
+            Deft.Chain.pipeline([this._getScopedReleases, this._getSnaps, this._processSnaps, this._pivotSnaps, this._makeGrids],this).then({
                 scope: this,
                 success: function(result) {
                     this.logger.log("Done  ",result);
@@ -294,8 +366,8 @@ Ext.define('CustomApp', {
         Ext.create('Rally.data.lookback.SnapshotStore',{
             autoLoad: true,
             filters: filters,
-            fetch: ['PlanEstimate','_PreviousValues','_UnformattedID','Release','_TypeHierarchy','Name','PreliminaryEstimate',this.alternate_pi_size_field],
-            hydrate: ['_TypeHierarchy'],
+            fetch: ['PlanEstimate','_PreviousValues','_UnformattedID','Release','_TypeHierarchy','Name','PreliminaryEstimate',this.alternate_pi_size_field,'ScheduleState'],
+            hydrate: ['_TypeHierarchy','ScheduleState'],
             listeners: {
                 scope: this,
                 load: function(store,snaps,successful) {
@@ -343,7 +415,6 @@ Ext.define('CustomApp', {
                 size_difference = -1 * size_difference;
             }
             
-            
             if ( change_type ) {
                 changes.push({
                     FormattedID: id,
@@ -356,7 +427,8 @@ Ext.define('CustomApp', {
                     ChangeType: change_type,
                     timestamp: snap.get('_ValidFrom'),
                     id: id + '' + snap.get('_ValidFrom'),
-                    ObjectID: snap.get('ObjectID')
+                    ObjectID: snap.get('ObjectID'),
+                    ScheduleState: snap.get('ScheduleState')
                 });
                 if ( size_difference < 0 ) {
                     me.logger.log("Remove points ", change_type, size_difference, id);
@@ -376,6 +448,49 @@ Ext.define('CustomApp', {
         this.change_summaries = change_summaries;
         return changes;
     },
+
+    /* 
+    CM new function to pivot our view of the snapshot data rather than showing date on the y axis
+    I want to see a list of unique backlog items on the y-axis and which time period it was 
+    added or revoed in the x-axis
+    */
+
+     _pivotSnaps: function(changes){
+        var items = [];
+        var iterations = this.visibleIterations;
+
+        changes.forEach(function(entry) {
+            // do we already have this item in our result set?
+            var exists = -1;    
+            for (i = 0;i < items.length; i++){
+                if(items[i].FormattedID == entry.FormattedID){
+                    // Yup, we already have it, need to add the entry into the correct timebox
+                    exists = i;
+                    break;
+                }
+            }
+            if (exists == -1)
+                items.push(entry);
+
+            // now we have the reference to the item we want to mess with in [exists]
+            // update the relevant time period with the added/removed data
+
+
+            //iterations.forEach(function(iteration) {
+            //    entry.Bob = 'aa';        
+            //});
+            //items.push(entry);
+        });
+
+        /* TODO
+        get the list of iterations with start/finish dates
+        loop through each item
+        assign a time period and a set of details we care about (added/removed/points/whatever)
+        */
+  
+        return items;
+    },
+
     _getIdFromSnap: function(snap){
         var type_hierarchy = snap.get('_TypeHierarchy');
         var type = type_hierarchy[type_hierarchy.length - 1 ];
@@ -453,7 +568,10 @@ Ext.define('CustomApp', {
             data: changes,
             limit: 'Infinity',
             pageSize: 5000,
-            groupField: 'ChangeDate',
+            /* 
+                CM remove grouping for now 
+                groupField: 'ChangeDate', 
+            */
             sorters: [
                 { 
                     property: 'ChangeDate',
@@ -468,8 +586,8 @@ Ext.define('CustomApp', {
         
         var id_renderer = this._renderID;
         
-        if ( this.detail_grid ) { this.detail_grid.destroy(); }
-        this.detail_grid = this.down('#daily_box').add({
+        /* CM moved grid creation out so we can add dynamic iteration columns */
+        var grid = {
             xtype:'rallygrid',
             store:store,
             showPagingToolbar: false,
@@ -481,14 +599,22 @@ Ext.define('CustomApp', {
                 {text:'id',dataIndex:'FormattedID', width: 60,renderer: id_renderer},
                 {text:'Name',dataIndex:'Name',flex:1},
                 {text:'Size',dataIndex:'PlanEstimate', width: 40},
+                {text: 'State', dataIndex: 'ScheduleState'},
                 {text:'Delta',dataIndex:'ChangeValue', width: 40},
                 {text:'Action', dataIndex:'ChangeType', width: 80}
             ],
-           listeners: {
+            listeners: {
                 scope: this,
                 cellclick: this._onCellClick
             }
+        };
+
+        Ext.Array.each(this.visibleIterations, function(iteration){
+            grid.columnCfgs.push({text:iteration.Name, dataIndex:'Bob'});
         });
+
+        if ( this.detail_grid ) { this.detail_grid.destroy(); }
+        this.detail_grid = this.down('#daily_box').add(grid);
         
         return [];
     },
