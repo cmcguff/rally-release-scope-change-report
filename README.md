@@ -10,3 +10,7 @@ This is based on the standard Release Scope Change report. It has been updated t
 - Show relevant information with the period (estimate changes, added, removed etc.)
 - Add a column for defect statistics
 - Add a column for test case statistics
+
+## Screenshots
+
+![screenshot of app](/screenshot.png)
