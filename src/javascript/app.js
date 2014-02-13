@@ -531,7 +531,7 @@ Ext.define('CustomApp', {
                 existingEntry += "<br/>";
 
             var displayDate =  Rally.util.DateTime.toIsoString(entry.BaseDate).replace(/T.*$/,"");
-            items[exists][colId] = existingEntry + entry.ChangeType + " " + displayDate;
+            items[exists][colId] = existingEntry + entry.ChangeType + " " + displayDate + " " + entry.PlanEstimate + " " + entry.ChangeValue;
 
         });
 
