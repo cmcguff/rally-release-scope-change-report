@@ -303,6 +303,9 @@ Ext.define('CustomApp', {
             value: this.show_types
         });
         
+        /* CM let's make sure we grab items added to this release before or after the official start/end
+        this happens where release timeframes have been shifted.
+
         var date_filter = Ext.create('Rally.data.lookback.QueryFilter', {
             property: '_ValidFrom',
             operator: '>=',
@@ -312,6 +315,7 @@ Ext.define('CustomApp', {
             operator: '<=',
             value:end_date_iso
         })); 
+        */
         
         var release_filter = Ext.create('Rally.data.lookback.QueryFilter', {
             property: 'Release',
@@ -363,7 +367,8 @@ Ext.define('CustomApp', {
             or(size_change_filter).
             or(deleted_item_from_release_change_filter));
         
-        var filters = type_filter.and(date_filter).and(release_filter).and(type_change_filter);
+        //var filters = type_filter.and(date_filter).and(release_filter).and(type_change_filter);
+        var filters = type_filter.and(release_filter).and(type_change_filter);
         me.logger.log("Filter ", filters.toObject());
         Ext.create('Rally.data.lookback.SnapshotStore',{
             autoLoad: true,
