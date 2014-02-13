@@ -424,10 +424,10 @@ Ext.define('CustomApp', {
                 combinedState += " (" + state + ")";
 
             var size_difference = size;
-            if ( change_type === "Size Change" ) {
+            if ( change_type === "Resized" ) {
                 size_difference = size - previous_size;
             }
-            if ( change_type === "Removed from Release" ) {
+            if ( change_type === "Removed" ) {
                 size_difference = -1 * size_difference;
             }
             
@@ -529,7 +529,9 @@ Ext.define('CustomApp', {
             // create an iteration entry
             if (existingEntry != "")
                 existingEntry += "<br/>";
-            items[exists][colId] = existingEntry + entry.ChangeType + " " + entry.BaseDate;
+
+            var displayDate =  Rally.util.DateTime.toIsoString(entry.BaseDate).replace(/T.*$/,"");
+            items[exists][colId] = existingEntry + entry.ChangeType + " " + displayDate;
 
         });
 
@@ -560,21 +562,21 @@ Ext.define('CustomApp', {
         var size = snap.get(this.alternate_pi_size_field) || 0;
         
         if ( previous_release === null && Ext.Array.indexOf(this.release_oids,release) > -1 ) {
-            change_type = "Added to Release";
+            change_type = "Added";
         } else if ( Ext.Array.indexOf(this.release_oids,release) > -1 && 
             Ext.Array.indexOf(this.release_oids,previous_release) === -1 &&
             typeof previous_release !== "undefined" ) {
-            change_type = "Added to Release";
+            change_type = "Added";
         } else if ( release === "" && 
             Ext.Array.indexOf(this.release_oids,previous_release) !== -1) {
-            change_type = "Removed from Release";
+            change_type = "Removed";
         } else if ( Ext.Array.indexOf(this.release_oids,release) == -1 && 
              Ext.Array.indexOf(this.release_oids,previous_release) !== -1 ) {
-            change_type = "Removed from Release";
+            change_type = "Removed";
         } else if ( Ext.Array.indexOf(this.release_oids,release) > -1 &&
             size !== previous_size && 
             typeof previous_size !== "undefined") {
-            change_type = "Size Change";
+            change_type = "Resized";
         }
         
         var change_date = Rally.util.DateTime.toIsoString(Rally.util.DateTime.fromIsoString(snap.get('_ValidFrom')));
@@ -657,11 +659,10 @@ Ext.define('CustomApp', {
                 cellclick: this._onCellClick
             }
         };
-
         Ext.Array.each(this.visibleIterations, function(iteration){
             var from = Rally.util.DateTime.toIsoString(iteration.StartDate).replace(/T.*$/,"");
             var to = Rally.util.DateTime.toIsoString(iteration.EndDate).replace(/T.*$/,"");
-            var colName = iteration.Name + "</br>" + from + ":" + to;
+            var colName = iteration.Name;
             grid.columnCfgs.push({text:colName, dataIndex:iteration.ColumnID});
         });
 
