@@ -417,7 +417,12 @@ Ext.define('CustomApp', {
             var type = type_hierarchy[type_hierarchy.length - 1 ];
             
             var change_type = me._getChangeTypeFromSnap(snap);
-          
+            var scheduleState = snap.get('ScheduleState');
+            var state = snap.get('State');
+            var combinedState = scheduleState;
+            if (state != "")
+                combinedState += " (" + state + ")";
+
             var size_difference = size;
             if ( change_type === "Size Change" ) {
                 size_difference = size - previous_size;
@@ -440,8 +445,9 @@ Ext.define('CustomApp', {
                     timestamp: snap.get('_ValidFrom'),
                     id: id + '' + snap.get('_ValidFrom'),
                     ObjectID: snap.get('ObjectID'),
-                    ScheduleState: snap.get('ScheduleState'),
-                    State: snap.get('State')
+                    ScheduleState: scheduleState,
+                    State: state,
+                    CombinedState: combinedState
                 });
                 if ( size_difference < 0 ) {
                     me.logger.log("Remove points ", change_type, size_difference, id);
@@ -643,8 +649,7 @@ Ext.define('CustomApp', {
                 {text:'id',dataIndex:'FormattedID', width: 60,renderer: id_renderer},
                 {text:'Name',dataIndex:'Name',flex:1},
                 {text:'Size',dataIndex:'PlanEstimate', width: 40},
-                {text: 'State', dataIndex: 'ScheduleState'},
-                {text: 'Defect-State', dataIndex: 'State'},
+                {text: 'State', dataIndex: 'CombinedState'},
                 {text:'Delta',dataIndex:'ChangeValue', width: 40},
             ],
             listeners: {
