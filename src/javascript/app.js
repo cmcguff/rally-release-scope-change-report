@@ -118,16 +118,18 @@ Ext.define('CustomApp', {
                         var iterations = [];
                         Ext.Array.each(records,function(record){
                             var id = record.get('ObjectID');
+                            var columnID = "I" + id;
                             var name = record.get('Name');
                             var startDate = record.get('StartDate');
                             var endDate = record.get('EndDate');
                             var include = false;
-                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include});    
+                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include, ColumnID: columnID});    
                             console.info('ID: ', id, 
                                 '  Name: ', name,  
                                 '  StartDate: ', startDate,                           
                                 '  EndDate: ', endDate,
-                                '  Include: ', include);
+                                '  Include: ', include,
+                                '  ColumnID: ', columnID);
                         });
                         this.iterations = iterations;
                         deferred.resolve([]);
@@ -366,8 +368,8 @@ Ext.define('CustomApp', {
         Ext.create('Rally.data.lookback.SnapshotStore',{
             autoLoad: true,
             filters: filters,
-            fetch: ['PlanEstimate','_PreviousValues','_UnformattedID','Release','_TypeHierarchy','Name','PreliminaryEstimate',this.alternate_pi_size_field,'ScheduleState'],
-            hydrate: ['_TypeHierarchy','ScheduleState'],
+            fetch: ['PlanEstimate','_PreviousValues','_UnformattedID','Release','_TypeHierarchy','Name','PreliminaryEstimate',this.alternate_pi_size_field,'ScheduleState','State'],
+            hydrate: ['_TypeHierarchy','ScheduleState','State'],
             listeners: {
                 scope: this,
                 load: function(store,snaps,successful) {
@@ -396,7 +398,11 @@ Ext.define('CustomApp', {
         };
         
         Ext.Array.each(snaps,function(snap){
-            var change_date = Rally.util.DateTime.toIsoString(Rally.util.DateTime.fromIsoString(snap.get('_ValidFrom'))).replace(/T.*$/,"");
+            // CM same format as the iteraiton dates
+            var base_date = Rally.util.DateTime.fromIsoString(snap.get('_ValidFrom'));
+
+            // Display dates
+            var change_date = Rally.util.DateTime.toIsoString(Rally.util.DateTime.fromIsoString(base_date)).replace(/T.*$/,"");
             var id = me._getIdFromSnap(snap);
             
             var previous_size = snap.get("_PreviousValues")[me.alternate_pi_size_field];
@@ -421,6 +427,7 @@ Ext.define('CustomApp', {
                     _ref: "/" + type.toLowerCase() + "/" + snap.get('ObjectID'),
                     PlanEstimate: size,
                     ChangeDate: change_date,
+                    BaseDate: base_date,
                     ChangeValue: size_difference,
                     _type: type,
                     Name: snap.get('Name'),
@@ -428,7 +435,8 @@ Ext.define('CustomApp', {
                     timestamp: snap.get('_ValidFrom'),
                     id: id + '' + snap.get('_ValidFrom'),
                     ObjectID: snap.get('ObjectID'),
-                    ScheduleState: snap.get('ScheduleState')
+                    ScheduleState: snap.get('ScheduleState'),
+                    State: snap.get('State')
                 });
                 if ( size_difference < 0 ) {
                     me.logger.log("Remove points ", change_type, size_difference, id);
@@ -452,13 +460,12 @@ Ext.define('CustomApp', {
     /* 
     CM new function to pivot our view of the snapshot data rather than showing date on the y axis
     I want to see a list of unique backlog items on the y-axis and which time period it was 
-    added or revoed in the x-axis
+    added or removed in the x-axis
     */
 
      _pivotSnaps: function(changes){
         var items = [];
         var iterations = this.visibleIterations;
-
         changes.forEach(function(entry) {
             // do we already have this item in our result set?
             var exists = -1;    
@@ -469,17 +476,50 @@ Ext.define('CustomApp', {
                     break;
                 }
             }
-            if (exists == -1)
+            if (exists == -1){
                 items.push(entry);
+                exists = items.length-1;
+            }
 
             // now we have the reference to the item we want to mess with in [exists]
             // update the relevant time period with the added/removed data
+            var selectedIteration = -1;
+            for (i=0;i<iterations.length;i++){
+                iteration = iterations[i];
+                if(entry.BaseDate >= iteration.StartDate && entry.BaseDate <= iteration.EndDate){
+                    selectedIteration = i;
+                    break;
+                }
+            }
+            if (selectedIteration == -1) {
+                // wasn't found, possibility it is before or after visible iterations...
+                var first = 0;
+                var last = iterations.length-1;
+                if (entry.BaseDate < iterations[first].StartDate)
+                    selectedIteration = first;
+                else if (entry.BaseDate > iterations[last].EndDate)
+                    selectedIteration = last;
+                else // no idea what this would be...
+                    selectedIteration = first;
+            }   
 
+            var colId = iterations[selectedIteration].ColumnID;
+            var existingEntry = items[exists][colId];
 
-            //iterations.forEach(function(iteration) {
-            //    entry.Bob = 'aa';        
-            //});
-            //items.push(entry);
+            // create blank iteration buckets
+            for (i=0;i<iterations.length;i++){
+                items[exists][iterations[i].ColumnID] = "";
+            }
+
+            // filter out undetermined entries, bit overkill, but don't want to lose any data
+            if (existingEntry == null)
+                existingEntry = "";
+
+            // create an iteration entry
+            if (existingEntry != "")
+                existingEntry += "<br/>";
+            items[exists][colId] = existingEntry + entry.ChangeType + " " + entry.BaseDate;
+
         });
 
         /* TODO
@@ -487,7 +527,6 @@ Ext.define('CustomApp', {
         loop through each item
         assign a time period and a set of details we care about (added/removed/points/whatever)
         */
-  
         return items;
     },
 
@@ -575,7 +614,7 @@ Ext.define('CustomApp', {
             sorters: [
                 { 
                     property: 'ChangeDate',
-                    direction: 'DESC'
+                    direction: 'ASC'
                 },
                 {
                     property: 'timestamp',
@@ -600,8 +639,8 @@ Ext.define('CustomApp', {
                 {text:'Name',dataIndex:'Name',flex:1},
                 {text:'Size',dataIndex:'PlanEstimate', width: 40},
                 {text: 'State', dataIndex: 'ScheduleState'},
+                {text: 'Defect-State', dataIndex: 'State'},
                 {text:'Delta',dataIndex:'ChangeValue', width: 40},
-                {text:'Action', dataIndex:'ChangeType', width: 80}
             ],
             listeners: {
                 scope: this,
@@ -610,7 +649,10 @@ Ext.define('CustomApp', {
         };
 
         Ext.Array.each(this.visibleIterations, function(iteration){
-            grid.columnCfgs.push({text:iteration.Name, dataIndex:'Bob'});
+            var from = Rally.util.DateTime.toIsoString(iteration.StartDate).replace(/T.*$/,"");
+            var to = Rally.util.DateTime.toIsoString(iteration.EndDate).replace(/T.*$/,"");
+            var colName = iteration.Name + "</br>" + from + ":" + to;
+            grid.columnCfgs.push({text:colName, dataIndex:iteration.ColumnID});
         });
 
         if ( this.detail_grid ) { this.detail_grid.destroy(); }
