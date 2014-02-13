@@ -447,7 +447,9 @@ Ext.define('CustomApp', {
                     ObjectID: snap.get('ObjectID'),
                     ScheduleState: scheduleState,
                     State: state,
-                    CombinedState: combinedState
+                    CombinedState: combinedState,
+                    Pre: "",
+                    Post: ""
                 });
                 if ( size_difference < 0 ) {
                     me.logger.log("Remove points ", change_type, size_difference, id);
@@ -502,19 +504,21 @@ Ext.define('CustomApp', {
                     break;
                 }
             }
+
+            var colId = "";
+
             if (selectedIteration == -1) {
                 // wasn't found, possibility it is before or after visible iterations...
                 var first = 0;
                 var last = iterations.length-1;
-                if (entry.BaseDate < iterations[first].StartDate)
-                    selectedIteration = first;
-                else if (entry.BaseDate > iterations[last].EndDate)
-                    selectedIteration = last;
-                else // no idea what this would be...
-                    selectedIteration = first;
+                if (entry.BaseDate > iterations[last].EndDate)
+                    colId = "Post"
+                else
+                    colId = "Pre"
             }   
+            else
+                colId = iterations[selectedIteration].ColumnID;
 
-            var colId = iterations[selectedIteration].ColumnID;
             var existingEntry = items[exists][colId];
 
             // create blank iteration buckets
@@ -651,8 +655,9 @@ Ext.define('CustomApp', {
                 {text:'id',dataIndex:'FormattedID', width: 60,renderer: id_renderer},
                 {text:'Name',dataIndex:'Name',flex:1},
                 {text:'Size',dataIndex:'PlanEstimate', width: 40},
-                {text: 'State', dataIndex: 'CombinedState'},
+                {text:'State', dataIndex: 'CombinedState'},
                 {text:'Delta',dataIndex:'ChangeValue', width: 40},
+                {text:'Pre',dataIndex:'Pre'},
             ],
             listeners: {
                 scope: this,
@@ -665,6 +670,8 @@ Ext.define('CustomApp', {
             var colName = iteration.Name;
             grid.columnCfgs.push({text:colName, dataIndex:iteration.ColumnID});
         });
+
+        grid.columnCfgs.push({text:"Post", dataIndex:'Post'});
 
         if ( this.detail_grid ) { this.detail_grid.destroy(); }
         this.detail_grid = this.down('#daily_box').add(grid);

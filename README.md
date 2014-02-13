@@ -6,10 +6,10 @@ This is based on the standard Release Scope Change report. It has been updated t
 
 ## Todo
 
-- Map changes made to a backlog item into the correct periods
-- Show relevant information with the period (estimate changes, added, removed etc.)
 - Add a column for defect statistics
 - Add a column for test case statistics
+- remove delta column
+- add a final size column
 
 ## Screenshots
 
