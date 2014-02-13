@@ -649,14 +649,15 @@ Ext.define('CustomApp', {
             showPagingToolbar: false,
             features: [{
                 ftype:'grouping',
-                groupHeaderTpl: '{name}'
+                groupHeaderTpl: '{name}',
+                ftype: 'summary'
             }],
             columnCfgs: [
                 {text:'id',dataIndex:'FormattedID', width: 60,renderer: id_renderer},
                 {text:'Name',dataIndex:'Name',flex:1},
-                {text:'Size',dataIndex:'PlanEstimate', width: 40},
+                {text:'Size',dataIndex:'PlanEstimate', width: 40, summaryType: 'sum'},
                 {text:'State', dataIndex: 'CombinedState'},
-                {text:'Delta',dataIndex:'ChangeValue', width: 40},
+                {text:'Delta',dataIndex:'ChangeValue', width: 40, summaryType: 'sum'},
                 {text:'Pre',dataIndex:'Pre'},
             ],
             listeners: {
