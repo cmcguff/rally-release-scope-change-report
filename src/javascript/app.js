@@ -713,7 +713,7 @@ Ext.define('CustomApp', {
         var me = this;
         var timestamp = record.get('timestamp').replace(/\.\d\d\d/,"");
         var store = Ext.create('Rally.data.wsapi.Store',{
-            model:'HierarchicalRequirement',
+            model:record.get('_type'),
             filters: [{property:'ObjectID',value:record.get('ObjectID')}],
             fetch: ['ObjectID','RevisionHistory'],
             autoLoad: true,
