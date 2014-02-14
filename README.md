@@ -8,8 +8,11 @@ This is based on the standard Release Scope Change report. It has been updated t
 
 - Add a column for defect statistics
 - Add a column for test case statistics
-- remove delta column
-- add a final size column
+- remove delta column?
+- show story size per iteration
+- remove dates in iteraiton columns
+- show state changes within iteration cells
+- add tooltip/hover details on cells
 
 ## Screenshots
 

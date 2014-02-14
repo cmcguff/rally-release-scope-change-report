@@ -698,12 +698,22 @@ Ext.define('CustomApp', {
             });
             this._getRevisionInformation(record,spanner);
         }
+        else if( cellIndex > 6 ) {
+            var spanner = Ext.create('Ext.container.Container',{
+                html: "Loading iteration details..."
+            });
+            var popover = Ext.create('Rally.ui.popover.Popover',{
+                target: Ext.get(cell),
+                items: [ spanner ]
+            });
+            this._getItemRevisionInformation(record,spanner);
+        }
     },
     _getRevisionInformation: function(record,spanner){
         var me = this;
         var timestamp = record.get('timestamp').replace(/\.\d\d\d/,"");
         var store = Ext.create('Rally.data.wsapi.Store',{
-            model:'PortfolioItem',
+            model:'HierarchicalRequirement',
             filters: [{property:'ObjectID',value:record.get('ObjectID')}],
             fetch: ['ObjectID','RevisionHistory'],
             autoLoad: true,
@@ -744,5 +754,8 @@ Ext.define('CustomApp', {
                 }
             }
         });
+    },
+    _getItemRevisionInformation: function(record, spanner){
+        spanner.update("test");
     }
 });
