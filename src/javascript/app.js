@@ -119,17 +119,19 @@ Ext.define('CustomApp', {
                         Ext.Array.each(records,function(record){
                             var id = record.get('ObjectID');
                             var columnID = "Iteration_" + id;
+                            var estimateID = "Estimate_" + id;
                             var name = record.get('Name');
                             var startDate = record.get('StartDate');
                             var endDate = record.get('EndDate');
                             var include = false;
-                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include, ColumnID: columnID});    
+                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include, ColumnID: columnID, EstimateID:estimateID});    
                             console.info('ID: ', id, 
                                 '  Name: ', name,  
                                 '  StartDate: ', startDate,                           
                                 '  EndDate: ', endDate,
                                 '  Include: ', include,
-                                '  ColumnID: ', columnID);
+                                '  ColumnID: ', columnID,
+                                '  EstimateID: ', estimateID);
                         });
                         this.iterations = iterations;
                         deferred.resolve([]);
@@ -510,24 +512,35 @@ Ext.define('CustomApp', {
             }
 
             var colId = "";
+            var estID = "";
 
             if (selectedIteration == -1) {
                 // wasn't found, possibility it is before or after visible iterations...
                 var first = 0;
                 var last = iterations.length-1;
                 if (entry.BaseDate > iterations[last].EndDate)
-                    colId = "Iteration_Post"
+                {
+                    colId = "Iteration_Post";
+                    estID = "Estimate_Post";
+                }
                 else
-                    colId = "Iteration_Pre"
+                {
+                    colId = "Iteration_Pre";
+                    estID = "Estimate_Pre";
+                }
             }   
             else
+            {
                 colId = iterations[selectedIteration].ColumnID;
+                estID = iterations[selectedIteration].EstimateID;
+            }
 
             var existingEntry = items[exists][colId];
 
             // create blank iteration buckets
             for (i=0;i<iterations.length;i++){
                 items[exists][iterations[i].ColumnID] = "";
+                items[exists][iterations[i].EstimateID] = "";
             }
 
             // filter out undetermined entries, bit overkill, but don't want to lose any data
@@ -540,6 +553,9 @@ Ext.define('CustomApp', {
 
             var displayDate =  Rally.util.DateTime.toIsoString(entry.BaseDate).replace(/T.*$/,"");
             items[exists][colId] = existingEntry + entry.ChangeType + " " + displayDate + " " + entry.PlanEstimate + " " + entry.ChangeValue;
+
+            // update iteraiton level plan estimates
+            items[exists][estID] = entry.PlanEstimate;   
 
             // update final planEstimate etc. with details from latest available revision
             items[exists].PlanEstimate = entry.PlanEstimate;
