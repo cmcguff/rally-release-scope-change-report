@@ -435,6 +435,7 @@ Ext.define('CustomApp', {
                 changes.push({
                     FormattedID: id,
                     _ref: "/" + type.toLowerCase() + "/" + snap.get('ObjectID'),
+                    InitialPlanEstimate: size,
                     PlanEstimate: size,
                     ChangeDate: change_date,
                     BaseDate: base_date,
@@ -492,6 +493,7 @@ Ext.define('CustomApp', {
             if (exists == -1){
                 items.push(entry);
                 exists = items.length-1;
+                // initial plan estimate will be correct here... don't override later.
             }
 
             // now we have the reference to the item we want to mess with in [exists]
@@ -539,14 +541,8 @@ Ext.define('CustomApp', {
 
             // update final planEstimate etc. with details from latest available revision
             items[exists].PlanEstimate = entry.PlanEstimate;
-
         });
 
-        /* TODO
-        get the list of iterations with start/finish dates
-        loop through each item
-        assign a time period and a set of details we care about (added/removed/points/whatever)
-        */
         return items;
     },
 
@@ -658,7 +654,8 @@ Ext.define('CustomApp', {
             columnCfgs: [
                 {text:'id',dataIndex:'FormattedID', width: 60,renderer: id_renderer},
                 {text:'Name',dataIndex:'Name',flex:1},
-                {text:'Size',dataIndex:'PlanEstimate', width: 40, summaryType: 'sum'},
+                {text:'Initial Size',dataIndex:'InitialPlanEstimate', width: 40, summaryType: 'sum'},                
+                {text:'Current Size',dataIndex:'PlanEstimate', width: 40, summaryType: 'sum'},
                 {text:'State', dataIndex: 'CombinedState'},
                 {text:'Delta',dataIndex:'ChangeValue', width: 40, summaryType: 'sum'},
                 {text:'Pre',dataIndex:'Pre'},
