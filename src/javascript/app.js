@@ -118,7 +118,7 @@ Ext.define('CustomApp', {
                         var iterations = [];
                         Ext.Array.each(records,function(record){
                             var id = record.get('ObjectID');
-                            var columnID = "I" + id;
+                            var columnID = "Iteration_" + id;
                             var name = record.get('Name');
                             var startDate = record.get('StartDate');
                             var endDate = record.get('EndDate');
@@ -449,8 +449,10 @@ Ext.define('CustomApp', {
                     ScheduleState: scheduleState,
                     State: state,
                     CombinedState: combinedState,
-                    Pre: "",
-                    Post: ""
+                    Iteration_Pre: "",
+                    Iteration_Post: "",
+                    Estimate_Pre: "",
+                    Estimate_Post: ""
                 });
                 if ( size_difference < 0 ) {
                     me.logger.log("Remove points ", change_type, size_difference, id);
@@ -514,9 +516,9 @@ Ext.define('CustomApp', {
                 var first = 0;
                 var last = iterations.length-1;
                 if (entry.BaseDate > iterations[last].EndDate)
-                    colId = "Post"
+                    colId = "Iteration_Post"
                 else
-                    colId = "Pre"
+                    colId = "Iteration_Pre"
             }   
             else
                 colId = iterations[selectedIteration].ColumnID;
@@ -658,7 +660,7 @@ Ext.define('CustomApp', {
                 {text:'Current Size',dataIndex:'PlanEstimate', width: 40, summaryType: 'sum'},
                 {text:'State', dataIndex: 'CombinedState'},
                 {text:'Delta',dataIndex:'ChangeValue', width: 40, summaryType: 'sum'},
-                {text:'Pre',dataIndex:'Pre'},
+                {text:'Pre',dataIndex:'Iteration_Pre'},
             ],
             listeners: {
                 scope: this,
@@ -672,7 +674,7 @@ Ext.define('CustomApp', {
             grid.columnCfgs.push({text:colName, dataIndex:iteration.ColumnID});
         });
 
-        grid.columnCfgs.push({text:"Post", dataIndex:'Post'});
+        grid.columnCfgs.push({text:"Post", dataIndex:'Iteration_Post'});
 
         if ( this.detail_grid ) { this.detail_grid.destroy(); }
         this.detail_grid = this.down('#daily_box').add(grid);
