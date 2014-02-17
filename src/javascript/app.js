@@ -672,8 +672,8 @@ Ext.define('CustomApp', {
             columnCfgs: [
                 {text:'id',dataIndex:'FormattedID', width: 60,renderer: id_renderer},
                 {text:'Name',dataIndex:'Name',flex:1},
-                {text:'Initial Size',dataIndex:'InitialPlanEstimate', width: 40, summaryType: 'sum'},                
-                {text:'Current Size',dataIndex:'PlanEstimate', width: 40, summaryType: 'sum'},
+                {text:'Initial Size',dataIndex:'InitialPlanEstimate', width: 50, summaryType: 'sum'},                
+                {text:'Current Size',dataIndex:'PlanEstimate', width: 50, summaryType: 'sum'},
                 {text:'State', dataIndex: 'CombinedState'},
                 {text:'Delta',dataIndex:'ChangeValue', width: 40, summaryType: 'sum'},
                 {text:'Pre',dataIndex:'Iteration_Pre'},
