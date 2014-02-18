@@ -7,6 +7,7 @@ Ext.define('CustomApp', {
     visibleIterations: {},
     releaseStartDate: '',
     releaseEndDate: '',
+    iterationColumn: 7,
 
     /* CM process for user stories and defects */
     /* TODO make this switchable between features and backlog items */
@@ -120,18 +121,20 @@ Ext.define('CustomApp', {
                             var id = record.get('ObjectID');
                             var columnID = "Iteration_" + id;
                             var estimateID = "Estimate_" + id;
+                            var hoverID = "Hover_" + id;
                             var name = record.get('Name');
                             var startDate = record.get('StartDate');
                             var endDate = record.get('EndDate');
                             var include = false;
-                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include, ColumnID: columnID, EstimateID:estimateID});    
+                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include, ColumnID: columnID, EstimateID: estimateID, HoverID: hoverID});    
                             console.info('ID: ', id, 
                                 '  Name: ', name,  
                                 '  StartDate: ', startDate,                           
                                 '  EndDate: ', endDate,
                                 '  Include: ', include,
                                 '  ColumnID: ', columnID,
-                                '  EstimateID: ', estimateID);
+                                '  EstimateID: ', estimateID,
+                                '  HoverID: ', hoverID);
                         });
                         this.iterations = iterations;
                         deferred.resolve([]);
@@ -454,7 +457,9 @@ Ext.define('CustomApp', {
                     Iteration_Pre: "",
                     Iteration_Post: "",
                     Estimate_Pre: "",
-                    Estimate_Post: ""
+                    Estimate_Post: "",
+                    Hover_Pre: "",
+                    Hover_Post: ""
                 });
                 if ( size_difference < 0 ) {
                     me.logger.log("Remove points ", change_type, size_difference, id);
@@ -511,8 +516,9 @@ Ext.define('CustomApp', {
                 }
             }
 
-            var colId = "";
+            var colID = "";
             var estID = "";
+            var hoverID = "";
 
             if (selectedIteration == -1) {
                 // wasn't found, possibility it is before or after visible iterations...
@@ -520,45 +526,65 @@ Ext.define('CustomApp', {
                 var last = iterations.length-1;
                 if (entry.BaseDate > iterations[last].EndDate)
                 {
-                    colId = "Iteration_Post";
+                    colID = "Iteration_Post";
                     estID = "Estimate_Post";
+                    hoverID = "Hover_Post";
                 }
                 else
                 {
-                    colId = "Iteration_Pre";
+                    colID = "Iteration_Pre";
                     estID = "Estimate_Pre";
+                    hoverID = "Hover_Pre";
                 }
             }   
             else
             {
-                colId = iterations[selectedIteration].ColumnID;
+                colID = iterations[selectedIteration].ColumnID;
                 estID = iterations[selectedIteration].EstimateID;
+                hoverID = iterations[selectedIteration].HoverID;
             }
 
-            var existingEntry = items[exists][colId];
+            var existingEntry = items[exists][colID];
+            var existingHoverEntry = items[exists][hoverID];
 
             // create blank iteration buckets
             for (i=0;i<iterations.length;i++){
                 items[exists][iterations[i].ColumnID] = "";
                 items[exists][iterations[i].EstimateID] = "";
+                items[exists][iterations[i].HoverID] = "";
             }
 
             // filter out undetermined entries, bit overkill, but don't want to lose any data
-            if (existingEntry == null)
+            if (existingEntry == null){
                 existingEntry = "";
+                existingHoverEntry = "";
+            }
 
             // create an iteration entry
             if (existingEntry != "")
+            {
                 existingEntry += "<br/>";
+                existingHoverEntry += "<br/>";
+            }
 
             var displayDate =  Rally.util.DateTime.toIsoString(entry.BaseDate).replace(/T.*$/,"");
-            items[exists][colId] = existingEntry + entry.ChangeType + " " + displayDate + " " + entry.PlanEstimate + " " + entry.ChangeValue;
+            items[exists][colID] = existingEntry + entry.ChangeType;
+
+            if (entry.ChangeType == "Added")
+                items[exists][hoverID] = existingHoverEntry + entry.ChangeType + " on " + entry.BaseDate;
+            else if (entry.ChangeType == "Removed")
+                items[exists][hoverID] = existingHoverEntry + entry.ChangeType + " on " + entry.BaseDate;
+            else if (entry.ChangeType == "Resized")
+                items[exists][hoverID] = existingHoverEntry + entry.ChangeType + " from " + (entry.PlanEstimate - entry.ChangeValue) + " to " + entry.PlanEstimate + " on " + displayDate;
 
             // update iteraiton level plan estimates
             items[exists][estID] = entry.PlanEstimate;   
 
             // update final planEstimate etc. with details from latest available revision
             items[exists].PlanEstimate = entry.PlanEstimate;
+
+            // update delta totals
+            items[exists].ChangeValue = entry.PlanEstimate - items[exists].InitialPlanEstimate;
         });
 
         return items;
@@ -774,9 +800,16 @@ Ext.define('CustomApp', {
         });
     },
     _getItemRevisionInformation: function(record, spanner, cellIndex){
+
         var column = "";
-        if (cellIndex == 7)
-            column = "Iteration_Pre"
+        var offset = this.iterationColumn + 1;
+
+        if (cellIndex == this.iterationColumn)
+            column = "Hover_Pre";
+        else if (cellIndex == this.visibleIterations.length + offset)
+            column = "Hover_Post";
+        else
+            column = "Hover_" + this.visibleIterations[cellIndex - offset].ID;
 
         var text = record.get(column);
         spanner.update(text);
