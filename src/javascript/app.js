@@ -706,7 +706,7 @@ Ext.define('CustomApp', {
         //return "<a target='_top' href='" + Rally.nav.Manager.getDetailUrl(record) + "'>" + value + "</a>";
     },
     _onCellClick: function(grid, cell, cellIndex, record, tr, rowIndex, e, eOpts ){
-        if ( cellIndex === 5 ) {
+        if ( cellIndex >= 5 ) {
             var spanner = Ext.create('Ext.container.Container',{
                 html: "Loading..."
             });
@@ -715,16 +715,6 @@ Ext.define('CustomApp', {
                 items: [ spanner ]
             });
             this._getRevisionInformation(record,spanner);
-        }
-        else if( cellIndex > 6 ) {
-            var spanner = Ext.create('Ext.container.Container',{
-                html: "Loading iteration details..."
-            });
-            var popover = Ext.create('Rally.ui.popover.Popover',{
-                target: Ext.get(cell),
-                items: [ spanner ]
-            });
-            this._getItemRevisionInformation(record,spanner);
         }
     },
     _getRevisionInformation: function(record,spanner){
@@ -772,8 +762,5 @@ Ext.define('CustomApp', {
                 }
             }
         });
-    },
-    _getItemRevisionInformation: function(record, spanner){
-        spanner.update("test");
     }
 });
