@@ -436,12 +436,13 @@ Ext.define('CustomApp', {
             var type_hierarchy = snap.get('_TypeHierarchy');
             var type = type_hierarchy[type_hierarchy.length - 1 ];
             
-            var change_type = me._getChangeTypeFromSnap(snap);
+            var change_type = me._getChangeTypeFromSnap(snap, 1);
+            var schedule_type = me._getChangeTypeFromSnap(snap, 2) 
             var scheduleState = snap.get('ScheduleState');
             var state = snap.get('State');
             var combinedState = scheduleState;
 
-            if (state != "")
+            if (state != "" && state != null)
                 combinedState += " (" + state + ")";
 
             var size_difference = size;
@@ -466,6 +467,7 @@ Ext.define('CustomApp', {
                     _type: type,
                     Name: snap.get('Name'),
                     ChangeType: change_type,
+                    ScheduleType: schedule_type,
                     timestamp: snap.get('_ValidFrom'),
                     id: id + '' + snap.get('_ValidFrom'),
                     ObjectID: snap.get('ObjectID'),
@@ -625,9 +627,10 @@ Ext.define('CustomApp', {
         var type = type_hierarchy[type_hierarchy.length - 1 ];
         return this.prefixes[type] + snap.get('_UnformattedID');
     },
-    _getChangeTypeFromSnap: function(snap){
+    _getChangeTypeFromSnap: function(snap, return_type){
         var change_type = false;
-        
+        var schedule_type = false;
+
         var previous_release = snap.get("_PreviousValues").Release;
         var release = snap.get("Release");
         
@@ -659,35 +662,14 @@ Ext.define('CustomApp', {
             change_type = "Resized";
         }
         
-        // CM add in schedule changes
-        if (previous_schedule_state != schedule_state)
-        {
-            if (previous_schedule_state == null || previous_schedule_state == 'undefined')
-                schedule_state_change = schedule_state;    
-            else
-                schedule_state_change = schedule_state;
-
-            if (change_type == false)
-            {
-                // this is an explicit schedule state change with no related release change
-                change_type = schedule_state_change;             
-            }
-            else
-            {
-                // release change AND a schedule change
-                if (change_type != "Removed")
-                {
-                    if (schedule_state_change != "")
-                    {
-                        change_type += "<br/>" + schedule_state_change; // only show if last action is not removed.
-                    }
-                }
-            }
-        }
+        schedule_type = schedule_state;
 
         var change_date = Rally.util.DateTime.toIsoString(Rally.util.DateTime.fromIsoString(snap.get('_ValidFrom')));
         this.logger.log("Change type", id, change_date, change_type, snap);
-        return change_type;
+        if (return_type == 1)
+            return change_type;
+        else
+            return schedule_type;
     },
     _makeGrids: function(changes) {
         this._makeSummaryGrid();
