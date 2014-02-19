@@ -367,10 +367,21 @@ Ext.define('CustomApp', {
             value:release_oids
         }));
         
+        var schedule_state_change_filter = Ext.create('Rally.data.lookback.QueryFilter',{
+            property: '_PreviousValues.ScheduleState',
+            operator: 'in',
+            value: ["Backlog","Defined","In Progress","Completed","Accepted"]
+        }).and(Ext.create('Rally.data.lookback.QueryFilter', {
+            property: 'Release',
+            operator: 'in',
+            value:release_oids
+        }));
+        
         var type_change_filter = incoming_release_change_filter.
             or(outgoing_release_change_filter.
             or(size_change_filter).
-            or(deleted_item_from_release_change_filter));
+            or(deleted_item_from_release_change_filter).
+            or(schedule_state_change_filter));
         
         //var filters = type_filter.and(date_filter).and(release_filter).and(type_change_filter);
         var filters = type_filter.and(release_filter).and(type_change_filter);
@@ -622,6 +633,9 @@ Ext.define('CustomApp', {
         var previous_size = snap.get("_PreviousValues")[this.alternate_pi_size_field];
         var size = snap.get(this.alternate_pi_size_field) || 0;
         
+        var previous_schedule_state = snap.get("_PreviousValues").ScheduleState;
+        var schedule_state = snap.get("ScheduleState");
+
         if ( previous_release === null && Ext.Array.indexOf(this.release_oids,release) > -1 ) {
             change_type = "Added";
         } else if ( Ext.Array.indexOf(this.release_oids,release) > -1 && 
@@ -640,6 +654,9 @@ Ext.define('CustomApp', {
             change_type = "Resized";
         }
         
+        if (previous_schedule_state != schedule_state)
+            change_type += schedule_state;
+
         var change_date = Rally.util.DateTime.toIsoString(Rally.util.DateTime.fromIsoString(snap.get('_ValidFrom')));
         this.logger.log("Change type", id, change_date, change_type, snap);
         return change_type;

@@ -5,6 +5,8 @@
     right:0px;
     width:5%;
 }
-.x-grid-row-outofscope {
-	background-color: red;
+
+/* .x-grid-row, .x-grid-cell, .x-grid-cell-inner */
+.x-grid-row-outofscope .x-grid-cell-inner{
+	color: #999;
 }

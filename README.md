@@ -8,6 +8,7 @@ This is based on the standard Release Scope Change report. It has been updated t
 
 - Unique story / defect list.
 - Displays start/final/delta in story points for each item
+- Overall release scope per item (In Scope, Out of Scope)
 - Shows changes (Added, Removed, Resized) per iteration for each item.
 - Only shows iterations that fall completely within the release start/end.
 - Deals with out of range dates or modified release end points with a pre-release and post-release column.
