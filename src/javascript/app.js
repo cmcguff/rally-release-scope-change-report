@@ -7,7 +7,7 @@ Ext.define('CustomApp', {
     visibleIterations: {},
     releaseStartDate: '',
     releaseEndDate: '',
-    iterationColumn: 7,
+    iterationColumn: 8,
 
     /* CM process for user stories and defects */
     /* TODO make this switchable between features and backlog items */
@@ -425,6 +425,7 @@ Ext.define('CustomApp', {
             var scheduleState = snap.get('ScheduleState');
             var state = snap.get('State');
             var combinedState = scheduleState;
+
             if (state != "")
                 combinedState += " (" + state + ")";
 
@@ -435,6 +436,8 @@ Ext.define('CustomApp', {
             if ( change_type === "Removed" ) {
                 size_difference = -1 * size_difference;
             }
+
+            var releaseScope = "In Scope";
             
             if ( change_type ) {
                 changes.push({
@@ -459,7 +462,8 @@ Ext.define('CustomApp', {
                     Estimate_Pre: "",
                     Estimate_Post: "",
                     Hover_Pre: "",
-                    Hover_Post: ""
+                    Hover_Post: "",
+                    ReleaseScope: releaseScope
                 });
                 if ( size_difference < 0 ) {
                     me.logger.log("Remove points ", change_type, size_difference, id);
@@ -577,6 +581,9 @@ Ext.define('CustomApp', {
             else if (entry.ChangeType == "Resized")
                 items[exists][hoverID] = existingHoverEntry + entry.ChangeType + " from " + (entry.PlanEstimate - entry.ChangeValue) + " to " + entry.PlanEstimate + " on " + displayDate;
 
+            // store latest change type
+            items[exists].ChangeType = entry.ChangeType;    
+
             // update iteraiton level plan estimates
             items[exists][estID] = entry.PlanEstimate;   
 
@@ -585,6 +592,13 @@ Ext.define('CustomApp', {
 
             // update delta totals
             items[exists].ChangeValue = entry.PlanEstimate - items[exists].InitialPlanEstimate;
+
+        });
+
+        // any post-processing on the items
+        items.forEach(function(item) {
+            if (item.ChangeType == "Removed")
+                item.ReleaseScope = "Out of Scope";
         });
 
         return items;
@@ -695,11 +709,17 @@ Ext.define('CustomApp', {
                 groupHeaderTpl: '{name}',
                 ftype: 'summary'
             }],
+            viewConfig: {
+                getRowClass: function(record, rowIndex, rp, ds){ 
+                    return 'x-grid-row-outofscope';
+                }
+            },         
             columnCfgs: [
                 {text:'id',dataIndex:'FormattedID', width: 60,renderer: id_renderer},
                 {text:'Name',dataIndex:'Name',flex:1},
                 {text:'Initial Size',dataIndex:'InitialPlanEstimate', width: 50, summaryType: 'sum'},                
                 {text:'Current Size',dataIndex:'PlanEstimate', width: 50, summaryType: 'sum'},
+                {text:'Release Scope', dataIndex: 'ReleaseScope'},
                 {text:'State', dataIndex: 'CombinedState'},
                 {text:'Delta',dataIndex:'ChangeValue', width: 40, summaryType: 'sum'},
                 {text:'Pre',dataIndex:'Iteration_Pre'},
