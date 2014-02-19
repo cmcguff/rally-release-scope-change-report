@@ -480,6 +480,7 @@ Ext.define('CustomApp', {
                     Hover_Post: "",
                     ReleaseScope: releaseScope
                 });
+                
                 if ( size_difference < 0 ) {
                     me.logger.log("Remove points ", change_type, size_difference, id);
                     change_summaries.remove_points = change_summaries.remove_points - size_difference;
