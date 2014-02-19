@@ -17,6 +17,10 @@ Ext.define('CustomApp', {
         CM use this for portfolio item sizing if required...
         alternate_pi_size_field: 'c_PIPlanEstimate', 
     */
+
+    // abstract out schedule states
+    schedule_states: ["Backlog","Defined","In-Progress","Completed","Accepted","Released"],
+
     alternate_pi_size_field: 'PlanEstimate',
     logger: new Rally.technicalservices.Logger(),
     items: [
@@ -370,13 +374,13 @@ Ext.define('CustomApp', {
         var schedule_state_change_filter = Ext.create('Rally.data.lookback.QueryFilter',{
             property: '_PreviousValues.ScheduleState',
             operator: 'in',
-            value: ["Backlog","Defined","In Progress","Completed","Accepted"]
+            value: this.schedule_states
         }).and(Ext.create('Rally.data.lookback.QueryFilter', {
             property: 'Release',
             operator: 'in',
             value:release_oids
         }));
-        
+
         var type_change_filter = incoming_release_change_filter.
             or(outgoing_release_change_filter.
             or(size_change_filter).
@@ -654,8 +658,31 @@ Ext.define('CustomApp', {
             change_type = "Resized";
         }
         
+        // CM add in schedule changes
         if (previous_schedule_state != schedule_state)
-            change_type += schedule_state;
+        {
+            if (previous_schedule_state == null || previous_schedule_state == 'undefined')
+                schedule_state_change = schedule_state;    
+            else
+                schedule_state_change = schedule_state;
+
+            if (change_type == false)
+            {
+                // this is an explicit schedule state change with no related release change
+                change_type = schedule_state_change;             
+            }
+            else
+            {
+                // release change AND a schedule change
+                if (change_type != "Removed")
+                {
+                    if (schedule_state_change != "")
+                    {
+                        change_type += "<br/>" + schedule_state_change; // only show if last action is not removed.
+                    }
+                }
+            }
+        }
 
         var change_date = Rally.util.DateTime.toIsoString(Rally.util.DateTime.fromIsoString(snap.get('_ValidFrom')));
         this.logger.log("Change type", id, change_date, change_type, snap);
