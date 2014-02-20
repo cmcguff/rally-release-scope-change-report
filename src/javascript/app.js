@@ -20,6 +20,7 @@ Ext.define('CustomApp', {
 
     // abstract out schedule states
     schedule_states: ["Backlog","Defined","In-Progress","Completed","Accepted","Released"],
+    ignore_schedule_states: ["Backlog","Defined","Released"],
 
     alternate_pi_size_field: 'PlanEstimate',
     logger: new Rally.technicalservices.Logger(),
@@ -586,15 +587,21 @@ Ext.define('CustomApp', {
                 existingHoverEntry += "<br/>";
             }
 
-            var displayDate =  Rally.util.DateTime.toIsoString(entry.BaseDate).replace(/T.*$/,"");
+            var displayDate =  entry.BaseDate; //Rally.util.DateTime.toIsoString(entry.BaseDate).replace(/T.*$/,"");
             items[exists][colID] = existingEntry + entry.ChangeType;
 
-            if (entry.ChangeType == "Added")
-                items[exists][hoverID] = existingHoverEntry + entry.ChangeType + " on " + entry.BaseDate;
-            else if (entry.ChangeType == "Removed")
-                items[exists][hoverID] = existingHoverEntry + entry.ChangeType + " on " + entry.BaseDate;
-            else if (entry.ChangeType == "Resized")
-                items[exists][hoverID] = existingHoverEntry + entry.ChangeType + " from " + (entry.PlanEstimate - entry.ChangeValue) + " to " + entry.PlanEstimate + " on " + displayDate;
+            // hover details for release changes   
+            if (entry.ChangeType.indexOf("Added") != -1)
+                items[exists][hoverID] = existingHoverEntry + " Added on " + displayDate;
+            else if (entry.ChangeType.indexOf("Removed") != -1)
+                items[exists][hoverID] = existingHoverEntry + " Removed on " + displayDate;
+            else if (entry.ChangeType.indexOf("Resized") != -1)
+                items[exists][hoverID] = existingHoverEntry + " Resized from " + (entry.PlanEstimate - entry.ChangeValue) + " to " + entry.PlanEstimate + " on " + displayDate;
+
+            // and hover details for any corresponding schedule state changes
+            if (entry.ChangeType.indexOf("Completed") != -1)
+                items[exists][hoverID] = existingHoverEntry + " Completed on " + displayDate;
+
 
             // store latest change type
             items[exists].ChangeType = entry.ChangeType;    
@@ -675,6 +682,10 @@ Ext.define('CustomApp', {
                 schedule_state_change = schedule_state;    
             else
                 schedule_state_change = schedule_state;
+
+            // filter out backlog / defined / released - we don't want to see these in the grid
+            if (this.ignore_schedule_states.indexOf(schedule_state) != -1)
+                schedule_state_change = "";
 
             if (change_type == false)
             {
