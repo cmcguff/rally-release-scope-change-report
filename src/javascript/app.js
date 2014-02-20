@@ -429,20 +429,19 @@ Ext.define('CustomApp', {
             // Display dates
             var change_date = Rally.util.DateTime.toIsoString(Rally.util.DateTime.fromIsoString(base_date)).replace(/T.*$/,"");
             var id = me._getIdFromSnap(snap);
-            
+
             var previous_size = snap.get("_PreviousValues")[me.alternate_pi_size_field];
             var size = snap.get(me.alternate_pi_size_field) || 0;
                                   
             var type_hierarchy = snap.get('_TypeHierarchy');
             var type = type_hierarchy[type_hierarchy.length - 1 ];
             
-            var change_type = me._getChangeTypeFromSnap(snap, 1);
-            var schedule_type = me._getChangeTypeFromSnap(snap, 2) 
+            var change_type = me._getChangeTypeFromSnap(snap);
             var scheduleState = snap.get('ScheduleState');
             var state = snap.get('State');
             var combinedState = scheduleState;
 
-            if (state != "" && state != null)
+            if (state != "" && state != null )
                 combinedState += " (" + state + ")";
 
             var size_difference = size;
@@ -467,7 +466,6 @@ Ext.define('CustomApp', {
                     _type: type,
                     Name: snap.get('Name'),
                     ChangeType: change_type,
-                    ScheduleType: schedule_type,
                     timestamp: snap.get('_ValidFrom'),
                     id: id + '' + snap.get('_ValidFrom'),
                     ObjectID: snap.get('ObjectID'),
@@ -512,6 +510,10 @@ Ext.define('CustomApp', {
         var items = [];
         var iterations = this.visibleIterations;
         changes.forEach(function(entry) {
+
+            if (entry.FormattedID == "US5584")
+                debugger;
+
             // do we already have this item in our result set?
             var exists = -1;    
             for (i = 0;i < items.length; i++){
@@ -524,7 +526,12 @@ Ext.define('CustomApp', {
             if (exists == -1){
                 items.push(entry);
                 exists = items.length-1;
-                // initial plan estimate will be correct here... don't override later.
+                // create blank iteration buckets
+                for (i=0;i<iterations.length;i++){
+                    items[exists][iterations[i].ColumnID] = "";
+                    items[exists][iterations[i].EstimateID] = "";
+                    items[exists][iterations[i].HoverID] = "";
+                }                
             }
 
             // now we have the reference to the item we want to mess with in [exists]
@@ -568,13 +575,6 @@ Ext.define('CustomApp', {
 
             var existingEntry = items[exists][colID];
             var existingHoverEntry = items[exists][hoverID];
-
-            // create blank iteration buckets
-            for (i=0;i<iterations.length;i++){
-                items[exists][iterations[i].ColumnID] = "";
-                items[exists][iterations[i].EstimateID] = "";
-                items[exists][iterations[i].HoverID] = "";
-            }
 
             // filter out undetermined entries, bit overkill, but don't want to lose any data
             if (existingEntry == null){
@@ -627,10 +627,9 @@ Ext.define('CustomApp', {
         var type = type_hierarchy[type_hierarchy.length - 1 ];
         return this.prefixes[type] + snap.get('_UnformattedID');
     },
-    _getChangeTypeFromSnap: function(snap, return_type){
+    _getChangeTypeFromSnap: function(snap){
         var change_type = false;
-        var schedule_type = false;
-
+        
         var previous_release = snap.get("_PreviousValues").Release;
         var release = snap.get("Release");
         
@@ -662,14 +661,35 @@ Ext.define('CustomApp', {
             change_type = "Resized";
         }
         
-        schedule_type = schedule_state;
+        // CM add in schedule changes
+        if (previous_schedule_state != schedule_state)
+        {
+            if (previous_schedule_state == null || previous_schedule_state == 'undefined')
+                schedule_state_change = schedule_state;    
+            else
+                schedule_state_change = schedule_state;
+
+            if (change_type == false)
+            {
+                // this is an explicit schedule state change with no related release change
+                change_type = schedule_state_change;             
+            }
+            else
+            {
+                // release change AND a schedule change
+                if (change_type != "Removed")
+                {
+                    if (schedule_state_change != "")
+                    {
+                        change_type += "<br/>" + schedule_state_change; // only show if last action is not removed.
+                    }
+                }
+            }
+        }
 
         var change_date = Rally.util.DateTime.toIsoString(Rally.util.DateTime.fromIsoString(snap.get('_ValidFrom')));
         this.logger.log("Change type", id, change_date, change_type, snap);
-        if (return_type == 1)
-            return change_type;
-        else
-            return schedule_type;
+        return change_type;
     },
     _makeGrids: function(changes) {
         this._makeSummaryGrid();
