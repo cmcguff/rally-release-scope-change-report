@@ -3,11 +3,11 @@
 <head>
     <title>Release Scope Change</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri Feb 14 2014 14:27:16 GMT+1300 (New Zealand Daylight Time) -->
+    <!--  Build Date: Thu Feb 20 2014 15:05:34 GMT+1300 (New Zealand Daylight Time) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Feb 14 2014 14:27:16 GMT+1300 (New Zealand Daylight Time)";
-        var CHECKSUM = 62559216906;
+        var APP_BUILD_DATE = "Thu Feb 20 2014 15:05:34 GMT+1300 (New Zealand Daylight Time)";
+        var CHECKSUM = 79353702572;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -265,6 +265,7 @@ Ext.define('CustomApp', {
     visibleIterations: {},
     releaseStartDate: '',
     releaseEndDate: '',
+    iterationColumn: 8,
 
     /* CM process for user stories and defects */
     /* TODO make this switchable between features and backlog items */
@@ -274,6 +275,10 @@ Ext.define('CustomApp', {
         CM use this for portfolio item sizing if required...
         alternate_pi_size_field: 'c_PIPlanEstimate', 
     */
+
+    // abstract out schedule states
+    schedule_states: ["Backlog","Defined","In-Progress","Completed","Accepted","Released"],
+
     alternate_pi_size_field: 'PlanEstimate',
     logger: new Rally.technicalservices.Logger(),
     items: [
@@ -376,18 +381,22 @@ Ext.define('CustomApp', {
                         var iterations = [];
                         Ext.Array.each(records,function(record){
                             var id = record.get('ObjectID');
-                            var columnID = "I" + id;
+                            var columnID = "Iteration_" + id;
+                            var estimateID = "Estimate_" + id;
+                            var hoverID = "Hover_" + id;
                             var name = record.get('Name');
                             var startDate = record.get('StartDate');
                             var endDate = record.get('EndDate');
                             var include = false;
-                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include, ColumnID: columnID});    
+                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include, ColumnID: columnID, EstimateID: estimateID, HoverID: hoverID});    
                             console.info('ID: ', id, 
                                 '  Name: ', name,  
                                 '  StartDate: ', startDate,                           
                                 '  EndDate: ', endDate,
                                 '  Include: ', include,
-                                '  ColumnID: ', columnID);
+                                '  ColumnID: ', columnID,
+                                '  EstimateID: ', estimateID,
+                                '  HoverID: ', hoverID);
                         });
                         this.iterations = iterations;
                         deferred.resolve([]);
@@ -620,10 +629,21 @@ Ext.define('CustomApp', {
             value:release_oids
         }));
         
+        var schedule_state_change_filter = Ext.create('Rally.data.lookback.QueryFilter',{
+            property: '_PreviousValues.ScheduleState',
+            operator: 'in',
+            value: this.schedule_states
+        }).and(Ext.create('Rally.data.lookback.QueryFilter', {
+            property: 'Release',
+            operator: 'in',
+            value:release_oids
+        }));
+
         var type_change_filter = incoming_release_change_filter.
             or(outgoing_release_change_filter.
             or(size_change_filter).
-            or(deleted_item_from_release_change_filter));
+            or(deleted_item_from_release_change_filter).
+            or(schedule_state_change_filter));
         
         //var filters = type_filter.and(date_filter).and(release_filter).and(type_change_filter);
         var filters = type_filter.and(release_filter).and(type_change_filter);
@@ -667,7 +687,7 @@ Ext.define('CustomApp', {
             // Display dates
             var change_date = Rally.util.DateTime.toIsoString(Rally.util.DateTime.fromIsoString(base_date)).replace(/T.*$/,"");
             var id = me._getIdFromSnap(snap);
-            
+
             var previous_size = snap.get("_PreviousValues")[me.alternate_pi_size_field];
             var size = snap.get(me.alternate_pi_size_field) || 0;
                                   
@@ -678,7 +698,8 @@ Ext.define('CustomApp', {
             var scheduleState = snap.get('ScheduleState');
             var state = snap.get('State');
             var combinedState = scheduleState;
-            if (state != "")
+
+            if (state != "" && state != null )
                 combinedState += " (" + state + ")";
 
             var size_difference = size;
@@ -688,6 +709,8 @@ Ext.define('CustomApp', {
             if ( change_type === "Removed" ) {
                 size_difference = -1 * size_difference;
             }
+
+            var releaseScope = "In Scope";
             
             if ( change_type ) {
                 changes.push({
@@ -707,9 +730,15 @@ Ext.define('CustomApp', {
                     ScheduleState: scheduleState,
                     State: state,
                     CombinedState: combinedState,
-                    Pre: "",
-                    Post: ""
+                    Iteration_Pre: "",
+                    Iteration_Post: "",
+                    Estimate_Pre: "",
+                    Estimate_Post: "",
+                    Hover_Pre: "",
+                    Hover_Post: "",
+                    ReleaseScope: releaseScope
                 });
+                
                 if ( size_difference < 0 ) {
                     me.logger.log("Remove points ", change_type, size_difference, id);
                     change_summaries.remove_points = change_summaries.remove_points - size_difference;
@@ -739,6 +768,7 @@ Ext.define('CustomApp', {
         var items = [];
         var iterations = this.visibleIterations;
         changes.forEach(function(entry) {
+
             // do we already have this item in our result set?
             var exists = -1;    
             for (i = 0;i < items.length; i++){
@@ -751,7 +781,12 @@ Ext.define('CustomApp', {
             if (exists == -1){
                 items.push(entry);
                 exists = items.length-1;
-                // initial plan estimate will be correct here... don't override later.
+                // create blank iteration buckets
+                for (i=0;i<iterations.length;i++){
+                    items[exists][iterations[i].ColumnID] = "";
+                    items[exists][iterations[i].EstimateID] = "";
+                    items[exists][iterations[i].HoverID] = "";
+                }                
             }
 
             // now we have the reference to the item we want to mess with in [exists]
@@ -765,40 +800,88 @@ Ext.define('CustomApp', {
                 }
             }
 
-            var colId = "";
+            var colID = "";
+            var estID = "";
+            var hoverID = "";
 
             if (selectedIteration == -1) {
                 // wasn't found, possibility it is before or after visible iterations...
                 var first = 0;
                 var last = iterations.length-1;
                 if (entry.BaseDate > iterations[last].EndDate)
-                    colId = "Post"
+                {
+                    colID = "Iteration_Post";
+                    estID = "Estimate_Post";
+                    hoverID = "Hover_Post";
+                }
                 else
-                    colId = "Pre"
+                {
+                    colID = "Iteration_Pre";
+                    estID = "Estimate_Pre";
+                    hoverID = "Hover_Pre";
+                }
             }   
             else
-                colId = iterations[selectedIteration].ColumnID;
-
-            var existingEntry = items[exists][colId];
-
-            // create blank iteration buckets
-            for (i=0;i<iterations.length;i++){
-                items[exists][iterations[i].ColumnID] = "";
+            {
+                colID = iterations[selectedIteration].ColumnID;
+                estID = iterations[selectedIteration].EstimateID;
+                hoverID = iterations[selectedIteration].HoverID;
             }
 
+            var existingEntry = items[exists][colID];
+            var existingHoverEntry = items[exists][hoverID];
+
             // filter out undetermined entries, bit overkill, but don't want to lose any data
-            if (existingEntry == null)
+            if (existingEntry == null){
                 existingEntry = "";
+                existingHoverEntry = "";
+            }
 
             // create an iteration entry
             if (existingEntry != "")
+            {
                 existingEntry += "<br/>";
+                existingHoverEntry += "<br/>";
+            }
 
             var displayDate =  Rally.util.DateTime.toIsoString(entry.BaseDate).replace(/T.*$/,"");
-            items[exists][colId] = existingEntry + entry.ChangeType + " " + displayDate + " " + entry.PlanEstimate + " " + entry.ChangeValue;
+            items[exists][colID] = existingEntry + entry.ChangeType;
+
+            if (entry.ChangeType == "Added")
+                items[exists][hoverID] = existingHoverEntry + entry.ChangeType + " on " + entry.BaseDate;
+            else if (entry.ChangeType == "Removed")
+                items[exists][hoverID] = existingHoverEntry + entry.ChangeType + " on " + entry.BaseDate;
+            else if (entry.ChangeType == "Resized")
+                items[exists][hoverID] = existingHoverEntry + entry.ChangeType + " from " + (entry.PlanEstimate - entry.ChangeValue) + " to " + entry.PlanEstimate + " on " + displayDate;
+
+            // store latest change type
+            items[exists].ChangeType = entry.ChangeType;    
+
+            // and the latest schedule state
+            items[exists].CombinedState = entry.CombinedState;
+            items[exists].State = entry.State;
+            items[exists].ScheduleState = entry.ScheduleState;
+
+            // update iteraiton level plan estimates
+            items[exists][estID] = entry.PlanEstimate;   
 
             // update final planEstimate etc. with details from latest available revision
             items[exists].PlanEstimate = entry.PlanEstimate;
+
+            // update delta totals
+            items[exists].ChangeValue = entry.PlanEstimate - items[exists].InitialPlanEstimate;
+
+        });
+
+        // any post-processing on the items
+        items.forEach(function(item) {
+            if (item.ChangeType == "Removed")
+            {
+                item.ReleaseScope = "Out of Scope";
+                item.CombinedState = "Removed";
+                if (item.state != "" && item.state != null)
+                    item.ReleaseScope += "(" + item.State + ")";
+            }
         });
 
         return items;
@@ -822,6 +905,9 @@ Ext.define('CustomApp', {
         var previous_size = snap.get("_PreviousValues")[this.alternate_pi_size_field];
         var size = snap.get(this.alternate_pi_size_field) || 0;
         
+        var previous_schedule_state = snap.get("_PreviousValues").ScheduleState;
+        var schedule_state = snap.get("ScheduleState");
+
         if ( previous_release === null && Ext.Array.indexOf(this.release_oids,release) > -1 ) {
             change_type = "Added";
         } else if ( Ext.Array.indexOf(this.release_oids,release) > -1 && 
@@ -840,6 +926,32 @@ Ext.define('CustomApp', {
             change_type = "Resized";
         }
         
+        // CM add in schedule changes
+        if (previous_schedule_state != schedule_state)
+        {
+            if (previous_schedule_state == null || previous_schedule_state == 'undefined')
+                schedule_state_change = schedule_state;    
+            else
+                schedule_state_change = schedule_state;
+
+            if (change_type == false)
+            {
+                // this is an explicit schedule state change with no related release change
+                change_type = schedule_state_change;             
+            }
+            else
+            {
+                // release change AND a schedule change
+                if (change_type != "Removed")
+                {
+                    if (schedule_state_change != "")
+                    {
+                        change_type += "<br/>" + schedule_state_change; // only show if last action is not removed.
+                    }
+                }
+            }
+        }
+
         var change_date = Rally.util.DateTime.toIsoString(Rally.util.DateTime.fromIsoString(snap.get('_ValidFrom')));
         this.logger.log("Change type", id, change_date, change_type, snap);
         return change_type;
@@ -888,11 +1000,11 @@ Ext.define('CustomApp', {
             sorters: [
                 { 
                     property: 'ChangeDate',
-                    direction: 'ASC'
+                    direction: 'DESC'
                 },
                 {
                     property: 'timestamp',
-                    direction: 'asc'
+                    direction: 'DESC'
                 }
             ]
         });
@@ -909,14 +1021,20 @@ Ext.define('CustomApp', {
                 groupHeaderTpl: '{name}',
                 ftype: 'summary'
             }],
+            viewConfig: {
+                getRowClass: function(record, rowIndex, rp, ds){ 
+                    return 'x-grid-row-outofscope';
+                }
+            },         
             columnCfgs: [
                 {text:'id',dataIndex:'FormattedID', width: 60,renderer: id_renderer},
                 {text:'Name',dataIndex:'Name',flex:1},
-                {text:'Initial Size',dataIndex:'InitialPlanEstimate', width: 40, summaryType: 'sum'},                
-                {text:'Current Size',dataIndex:'PlanEstimate', width: 40, summaryType: 'sum'},
+                {text:'Initial Size',dataIndex:'InitialPlanEstimate', width: 50, summaryType: 'sum'},                
+                {text:'Current Size',dataIndex:'PlanEstimate', width: 50, summaryType: 'sum'},
+                {text:'Release Scope', dataIndex: 'ReleaseScope'},
                 {text:'State', dataIndex: 'CombinedState'},
                 {text:'Delta',dataIndex:'ChangeValue', width: 40, summaryType: 'sum'},
-                {text:'Pre',dataIndex:'Pre'},
+                {text:'Pre',dataIndex:'Iteration_Pre'},
             ],
             listeners: {
                 scope: this,
@@ -930,7 +1048,7 @@ Ext.define('CustomApp', {
             grid.columnCfgs.push({text:colName, dataIndex:iteration.ColumnID});
         });
 
-        grid.columnCfgs.push({text:"Post", dataIndex:'Post'});
+        grid.columnCfgs.push({text:"Post", dataIndex:'Iteration_Post'});
 
         if ( this.detail_grid ) { this.detail_grid.destroy(); }
         this.detail_grid = this.down('#daily_box').add(grid);
@@ -964,7 +1082,7 @@ Ext.define('CustomApp', {
                 target: Ext.get(cell),
                 items: [ spanner ]
             });
-            this._getItemRevisionInformation(record,spanner);
+            this._getItemRevisionInformation(record,spanner,cellIndex);
         }
     },
     _getRevisionInformation: function(record,spanner){
@@ -1013,11 +1131,22 @@ Ext.define('CustomApp', {
             }
         });
     },
-    _getItemRevisionInformation: function(record, spanner){
-        spanner.update("test");
+    _getItemRevisionInformation: function(record, spanner, cellIndex){
+
+        var column = "";
+        var offset = this.iterationColumn + 1;
+
+        if (cellIndex == this.iterationColumn)
+            column = "Hover_Pre";
+        else if (cellIndex == this.visibleIterations.length + offset)
+            column = "Hover_Post";
+        else
+            column = "Hover_" + this.visibleIterations[cellIndex - offset].ID;
+
+        var text = record.get(column);
+        spanner.update(text);
     }
 });
-
             
                Rally.launchApp('CustomApp', {
                    name: 'Release Scope Change'
@@ -1033,6 +1162,11 @@ Ext.define('CustomApp', {
     position:absolute;
     right:0px;
     width:5%;
+}
+
+/* .x-grid-row, .x-grid-cell, .x-grid-cell-inner */
+.x-grid-row-outofscope .x-grid-cell-inner{
+	color: #999;
 }
     </style>
 
