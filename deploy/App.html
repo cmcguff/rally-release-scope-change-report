@@ -3,11 +3,11 @@
 <head>
     <title>Release Scope Change</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Feb 20 2014 15:05:34 GMT+1300 (New Zealand Daylight Time) -->
+    <!--  Build Date: Thu Feb 20 2014 19:03:11 GMT+1300 (New Zealand Daylight Time) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Feb 20 2014 15:05:34 GMT+1300 (New Zealand Daylight Time)";
-        var CHECKSUM = 79353702572;
+        var APP_BUILD_DATE = "Thu Feb 20 2014 19:03:11 GMT+1300 (New Zealand Daylight Time)";
+        var CHECKSUM = 80502387034;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -1037,6 +1037,14 @@ Ext.define('CustomApp', {
                 {text:'Pre',dataIndex:'Iteration_Pre'},
             ],
             listeners: {
+                beforerender: function(cmp) {
+                    cmp.view.getRowClass = function(record, index, rowParams, store) {
+                        var css = "";
+                        if (record.get('ReleaseScope') == "Out of Scope")
+                            css = 'x-grid-row-outofscope';
+                        return css;
+                    };
+                },
                 scope: this,
                 cellclick: this._onCellClick
             }

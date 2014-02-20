@@ -779,6 +779,14 @@ Ext.define('CustomApp', {
                 {text:'Pre',dataIndex:'Iteration_Pre'},
             ],
             listeners: {
+                beforerender: function(cmp) {
+                    cmp.view.getRowClass = function(record, index, rowParams, store) {
+                        var css = "";
+                        if (record.get('ReleaseScope') == "Out of Scope")
+                            css = 'x-grid-row-outofscope';
+                        return css;
+                    };
+                },
                 scope: this,
                 cellclick: this._onCellClick
             }
