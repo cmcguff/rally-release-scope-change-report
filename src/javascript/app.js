@@ -9,28 +9,30 @@ Ext.define('CustomApp', {
     releaseEndDate: '',
     iterationColumn: 8,
 
-    /* CM process for user stories and defects */
-    /* TODO make this switchable between features and backlog items */
+    // default item types to include in the results
     show_types: ['HierarchicalRequirement','Defect'],
-    /*  show_types: ['HierarchicalRequirement','Defect','PortfolioItem'], */
-    /* 
-        CM use this for portfolio item sizing if required...
-        alternate_pi_size_field: 'c_PIPlanEstimate', 
-    */
+    // show_types: ['HierarchicalRequirement','Defect','PortfolioItem'], 
 
-    // abstract out schedule states
+    // field to use for item sizing
+    alternate_pi_size_field: 'PlanEstimate',
+    // size field for portfolio items   
+    // alternate_pi_size_field: 'c_PIPlanEstimate', 
+
+    // schedule state names
     schedule_states: ["Backlog","Defined","In-Progress","Completed","Accepted","Released"],
+    // schedule states to be removed from the grid view
     ignore_schedule_states: ["Backlog","Defined","Released"],
 
-    alternate_pi_size_field: 'PlanEstimate',
     logger: new Rally.technicalservices.Logger(),
     items: [
         {xtype:'container',itemId:'header_box', defaults: { padding: 5, margin: 5}, layout: { type: 'hbox'}, items:[
             {xtype:'container',itemId:'release_selector_box'},
             {xtype:'container',itemId:'release_description_box', padding: 10, tpl:'<tpl>{msg}</tpl>'}
         ]},
-        {xtype:'container',itemId:'change_summary_box', padding: 10, margin: 10  },
-        {xtype:'container',itemId:'daily_box', padding: 10, margin: 25 },
+        {xtype:'container',itemId:'options_box', padding: 10},
+        {xtype:'container',itemId:'iteration_summary_box', padding: 10},
+        {xtype:'container',itemId:'change_summary_box', padding: 10},
+        {xtype:'container',itemId:'daily_box', padding: 10},
         {xtype:'tsinfolink'}
     ],
     launch: function() {
