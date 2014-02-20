@@ -511,9 +511,6 @@ Ext.define('CustomApp', {
         var iterations = this.visibleIterations;
         changes.forEach(function(entry) {
 
-            if (entry.FormattedID == "US5584")
-                debugger;
-
             // do we already have this item in our result set?
             var exists = -1;    
             for (i = 0;i < items.length; i++){
@@ -602,6 +599,11 @@ Ext.define('CustomApp', {
             // store latest change type
             items[exists].ChangeType = entry.ChangeType;    
 
+            // and the latest schedule state
+            items[exists].CombinedState = entry.CombinedState;
+            items[exists].State = entry.State;
+            items[exists].ScheduleState = entry.ScheduleState;
+
             // update iteraiton level plan estimates
             items[exists][estID] = entry.PlanEstimate;   
 
@@ -616,7 +618,12 @@ Ext.define('CustomApp', {
         // any post-processing on the items
         items.forEach(function(item) {
             if (item.ChangeType == "Removed")
+            {
                 item.ReleaseScope = "Out of Scope";
+                item.CombinedState = "Removed";
+                if (item.state != "" && item.state != null)
+                    item.ReleaseScope += "(" + item.State + ")";
+            }
         });
 
         return items;
