@@ -30,8 +30,8 @@ Ext.define('CustomApp', {
             {xtype:'container',itemId:'release_description_box', padding: 10, tpl:'<tpl>{msg}</tpl>'}
         ]},
         {xtype:'container',itemId:'options_box', padding: 10},
-        {xtype:'container',itemId:'iteration_summary_box', padding: 10},
         {xtype:'container',itemId:'change_summary_box', padding: 10},
+        {xtype:'container',itemId:'iteration_summary_grid', padding: 10},
         {xtype:'container',itemId:'daily_box', padding: 10},
         {xtype:'tsinfolink'}
     ],
@@ -129,11 +129,12 @@ Ext.define('CustomApp', {
                             var columnID = "Iteration_" + id;
                             var estimateID = "Estimate_" + id;
                             var hoverID = "Hover_" + id;
+                            var detailID = "Detail_" + id;
                             var name = record.get('Name');
                             var startDate = record.get('StartDate');
                             var endDate = record.get('EndDate');
                             var include = false;
-                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include, ColumnID: columnID, EstimateID: estimateID, HoverID: hoverID});    
+                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include, ColumnID: columnID, EstimateID: estimateID, HoverID: hoverID, DetailID: detailID});    
                             console.info('ID: ', id, 
                                 '  Name: ', name,  
                                 '  StartDate: ', startDate,                           
@@ -141,7 +142,8 @@ Ext.define('CustomApp', {
                                 '  Include: ', include,
                                 '  ColumnID: ', columnID,
                                 '  EstimateID: ', estimateID,
-                                '  HoverID: ', hoverID);
+                                '  HoverID: ', hoverID,
+                                '  DetailID: ', detailID);
                         });
                         this.iterations = iterations;
                         deferred.resolve([]);
@@ -161,6 +163,7 @@ Ext.define('CustomApp', {
                 change: function(rb) {
                     this.logger.log("Release Changed ", rb.getRecord());
                     this.setLoading();
+                    this.down('#iteration_summary_grid').removeAll();
                     this.down('#daily_box').removeAll();
                     this.down('#change_summary_box').removeAll();
                     this.down('#release_description_box').update(this._getReleaseSummary(rb.getRecord()));
@@ -512,6 +515,7 @@ Ext.define('CustomApp', {
      _pivotSnaps: function(changes){
         var items = [];
         var iterations = this.visibleIterations;
+
         changes.forEach(function(entry) {
 
             // do we already have this item in our result set?
@@ -531,6 +535,7 @@ Ext.define('CustomApp', {
                     items[exists][iterations[i].ColumnID] = "";
                     items[exists][iterations[i].EstimateID] = "";
                     items[exists][iterations[i].HoverID] = "";
+                    items[exists][iterations[i].DetailID] = "";
                 }                
             }
 
@@ -548,6 +553,7 @@ Ext.define('CustomApp', {
             var colID = "";
             var estID = "";
             var hoverID = "";
+            var detailID = "";
 
             if (selectedIteration == -1) {
                 // wasn't found, possibility it is before or after visible iterations...
@@ -558,12 +564,14 @@ Ext.define('CustomApp', {
                     colID = "Iteration_Post";
                     estID = "Estimate_Post";
                     hoverID = "Hover_Post";
+                    detailID = "Detail_Post";
                 }
                 else
                 {
                     colID = "Iteration_Pre";
                     estID = "Estimate_Pre";
                     hoverID = "Hover_Pre";
+                    detailID = "Detail_Pre";
                 }
             }   
             else
@@ -571,16 +579,21 @@ Ext.define('CustomApp', {
                 colID = iterations[selectedIteration].ColumnID;
                 estID = iterations[selectedIteration].EstimateID;
                 hoverID = iterations[selectedIteration].HoverID;
+                detailID = iterations[selectedIteration].DetailID;
             }
 
             var existingEntry = items[exists][colID];
             var existingHoverEntry = items[exists][hoverID];
+            var existingDetailEntry = items[exists][detailID];
 
             // filter out undetermined entries, bit overkill, but don't want to lose any data
             if (existingEntry == null){
                 existingEntry = "";
                 existingHoverEntry = "";
             }
+
+            if (existingDetailEntry == null)
+                existingDetailEntry = {Added_Count: 0, Added_Points: 0};
 
             // create an iteration entry
             if (existingEntry != "")
@@ -594,11 +607,17 @@ Ext.define('CustomApp', {
 
             // hover details for release changes   
             if (entry.ChangeType.indexOf("Added") != -1)
+            {
                 items[exists][hoverID] = existingHoverEntry + " Added on " + displayDate;
+                existingDetailEntry.Added_Count++;
+                existingDetailEntry.Added_Points += entry.PlanEstimate;
+            }
             else if (entry.ChangeType.indexOf("Removed") != -1)
                 items[exists][hoverID] = existingHoverEntry + " Removed on " + displayDate;
             else if (entry.ChangeType.indexOf("Resized") != -1)
                 items[exists][hoverID] = existingHoverEntry + " Resized from " + (entry.PlanEstimate - entry.ChangeValue) + " to " + entry.PlanEstimate + " on " + displayDate;
+
+            items[exists][detailID] = existingDetailEntry;
 
             // and hover details for any corresponding schedule state changes
             if (entry.ChangeType.indexOf("Completed") != -1)
@@ -624,7 +643,6 @@ Ext.define('CustomApp', {
 
         });
 
-        // any post-processing on the items
         items.forEach(function(item) {
             if (item.ChangeType == "Removed")
             {
@@ -633,8 +651,8 @@ Ext.define('CustomApp', {
                 if (item.state != "" && item.state != null)
                     item.ReleaseScope += "(" + item.State + ")";
             }
+            
         });
-
         return items;
     },
 
@@ -713,6 +731,7 @@ Ext.define('CustomApp', {
     },
     _makeGrids: function(changes) {
         this._makeSummaryGrid();
+        this._makeIterationSummaryGrid();
         this._makeDetailGrid(changes);
         return [];
     },
@@ -741,6 +760,49 @@ Ext.define('CustomApp', {
             ]
         });
     },
+    _makeIterationSummaryGrid: function(){
+        this.logger.log("_makeIterationSummaryGrid",this.iteration_change_summaries);
+        var iteration_changes = this.iteration_change_summaries;
+        this.setLoading(false);
+        var store = Ext.create('Rally.data.custom.Store',{
+            data: iteration_changes,
+            limit: 'Infinity',
+            pageSize: 5000,
+        });
+        var grid = {
+            xtype:'rallygrid',
+            store:store,
+            showPagingToolbar: false,
+            columnCfgs: [
+                {text:'Name',dataIndex:'Name',flex:1},
+                {text:'Initial Size', width: 50},                
+                {text:'Current Size', width: 50},
+                {text:'Release Scope'},
+                {text:'State'},
+                {text:'Delta', width: 40},
+                {text:'Pre',dataIndex:'Pre',renderer: this._subObjectPoints},
+            ],
+        };
+        Ext.Array.each(this.visibleIterations, function(iteration){
+            var from = Rally.util.DateTime.toIsoString(iteration.StartDate).replace(/T.*$/,"");
+            var to = Rally.util.DateTime.toIsoString(iteration.EndDate).replace(/T.*$/,"");
+            var colName = iteration.Name;
+            grid.columnCfgs.push({text:colName, dataIndex:iteration.ColumnID});
+        });
+
+        grid.columnCfgs.push({text:"Post", dataIndex:'Iteration_Post'});
+
+        if ( this.iteration_summary_grid ) { this.iteration_summary_grid.destroy(); }
+        this.iteration_summary_grid = this.down('#iteration_summary_grid').add(grid);
+        
+        return [];
+    },
+    _subObjectCount: function(val) {
+        return val.Count ;
+    },
+    _subObjectPoints: function(val) {
+        return val.Points ;
+    },    
     _makeDetailGrid: function(changes){
         this.logger.log("_makeDetailGrid",changes);
         this.setLoading(false);
