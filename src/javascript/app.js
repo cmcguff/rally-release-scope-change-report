@@ -10,7 +10,7 @@ Ext.define('CustomApp', {
     iterationColumn: 8,
 
     // default item types to include in the results
-    show_types: ['HierarchicalRequirement','Defect'],
+    show_types: ['HierarchicalRequirement', 'Defect'],
     // show_types: ['HierarchicalRequirement','Defect','PortfolioItem'], 
 
     // field to use for item sizing
@@ -19,21 +19,20 @@ Ext.define('CustomApp', {
     // alternate_pi_size_field: 'c_PIPlanEstimate', 
 
     // schedule state names
-    schedule_states: ["Backlog","Defined","In-Progress","Completed","Accepted","Released"],
+    schedule_states: ["Backlog", "Defined", "In-Progress", "Completed", "Accepted", "Released"],
     // schedule states to be removed from the grid view
-    ignore_schedule_states: ["Backlog","Defined","Released"],
+    ignore_schedule_states: ["Backlog", "Defined", "Released"],
 
     logger: new Rally.technicalservices.Logger(),
     items: [
-        {xtype:'container',itemId:'header_box', defaults: { padding: 5, margin: 5}, layout: { type: 'hbox'}, items:[
-            {xtype:'container',itemId:'release_selector_box'},
-            {xtype:'container',itemId:'release_description_box', padding: 10, tpl:'<tpl>{msg}</tpl>'}
+        {xtype: 'container', itemId: 'header_box', defaults: { padding: 5, margin: 5}, layout: { type: 'hbox'}, items: [
+            {xtype: 'container', itemId: 'release_selector_box'},
+            {xtype: 'container', itemId: 'release_description_box', padding: 10, tpl: '<tpl>{msg}</tpl>'}
         ]},
-        {xtype:'container',itemId:'options_box', padding: 10},
-        {xtype:'container',itemId:'change_summary_box', padding: 10},
-        {xtype:'container',itemId:'iteration_summary_grid', padding: 10},
-        {xtype:'container',itemId:'daily_box', padding: 10},
-        {xtype:'tsinfolink'}
+        {xtype: 'container', itemId: 'options_box', padding: 10},
+        {xtype: 'container', itemId: 'iteration_summary_grid', padding: 10},
+        {xtype: 'container', itemId: 'daily_box', padding: 10},
+        {xtype: 'tsinfolink'}
     ],
     launch: function() {
         this.logger.log("Launched with this context ", this.getContext());
@@ -165,7 +164,6 @@ Ext.define('CustomApp', {
                     this.setLoading();
                     this.down('#iteration_summary_grid').removeAll();
                     this.down('#daily_box').removeAll();
-                    this.down('#change_summary_box').removeAll();
                     this.down('#release_description_box').update(this._getReleaseSummary(rb.getRecord()));
                     this._getDailySummaries(rb.getRecord());
                 }
@@ -206,7 +204,7 @@ Ext.define('CustomApp', {
         
         if ( today < start_js ) {
             this.setLoading(false);
-            this.down('#change_summary_box').add({
+            this.down('#iteration_summary_grid').add({
                 xtype:'container',
                 html:'Release has not started yet.'
             });
@@ -419,14 +417,6 @@ Ext.define('CustomApp', {
         var me = this;
         this.logger.log("_processSnaps",snaps);
         var changes = [];
-        var change_summaries = {
-            add_count: 0,
-            add_points: 0,
-            remove_points: 0,
-            remove_count: 0,
-            net_points: 0,
-            net_count: 0
-        };
         
         Ext.Array.each(snaps,function(snap){
             // CM same format as the iteraiton dates
@@ -484,25 +474,13 @@ Ext.define('CustomApp', {
                     Estimate_Post: "",
                     Hover_Pre: "",
                     Hover_Post: "",
+                    Detail_Pre: null,
+                    Detail_Post: null,
                     ReleaseScope: releaseScope
                 });
-                
-                if ( size_difference < 0 ) {
-                    me.logger.log("Remove points ", change_type, size_difference, id);
-                    change_summaries.remove_points = change_summaries.remove_points - size_difference;
-                    change_summaries.remove_count = change_summaries.remove_count + 1;
-                    change_summaries.net_count = change_summaries.net_count - 1;
-                } else {
-                    me.logger.log("Add points ", change_type, size_difference, id);
-                    change_summaries.add_points = change_summaries.add_points + size_difference;
-                    change_summaries.add_count = change_summaries.add_count + 1;
-                    change_summaries.net_count = change_summaries.net_count + 1;
-                }
-                change_summaries.net_points = change_summaries.net_points + size_difference;
             }
         });
         
-        this.change_summaries = change_summaries;
         return changes;
     },
 
@@ -535,7 +513,7 @@ Ext.define('CustomApp', {
                     items[exists][iterations[i].ColumnID] = "";
                     items[exists][iterations[i].EstimateID] = "";
                     items[exists][iterations[i].HoverID] = "";
-                    items[exists][iterations[i].DetailID] = "";
+                    items[exists][iterations[i].DetailID] = null;
                 }                
             }
 
@@ -593,7 +571,20 @@ Ext.define('CustomApp', {
             }
 
             if (existingDetailEntry == null)
-                existingDetailEntry = {Added_Count: 0, Added_Points: 0};
+            {
+                existingDetailEntry = {
+                    Added_Count: 0, 
+                    Added_Points: 0,
+                    Removed_Count: 0,
+                    Removed_Points: 0,
+                    Resized_Count: 0,
+                    Resized_Points: 0,
+                    Completed_Count: 0,
+                    Completed_Points: 0,
+                    Accepted_Count: 0,
+                    Accepted_Points: 0
+                };
+            }
 
             // create an iteration entry
             if (existingEntry != "")
@@ -613,16 +604,33 @@ Ext.define('CustomApp', {
                 existingDetailEntry.Added_Points += entry.PlanEstimate;
             }
             else if (entry.ChangeType.indexOf("Removed") != -1)
+            {
                 items[exists][hoverID] = existingHoverEntry + " Removed on " + displayDate;
+                existingDetailEntry.Removed_Count++;
+                existingDetailEntry.Removed_Points += (-1*(entry.PlanEstimate - items[exists].InitialPlanEstimate));                
+            }
             else if (entry.ChangeType.indexOf("Resized") != -1)
+            {
                 items[exists][hoverID] = existingHoverEntry + " Resized from " + (entry.PlanEstimate - entry.ChangeValue) + " to " + entry.PlanEstimate + " on " + displayDate;
+                existingDetailEntry.Resized_Count++;
+                existingDetailEntry.Resized_Points += entry.PlanEstimate;                
+            }
+
+            // now check schedule changes as well    
+            if (entry.ChangeType.indexOf("Completed") != -1)
+            {
+                items[exists][hoverID] = existingHoverEntry + " Completed on " + displayDate;
+                existingDetailEntry.Completed_Count++;
+                existingDetailEntry.Completed_Points += entry.PlanEstimate;                
+            }
+            if (entry.ChangeType.indexOf("Accepted") != -1)
+            {
+                items[exists][hoverID] = existingHoverEntry + " Accepted on " + displayDate;
+                existingDetailEntry.Accepted_Count++;
+                existingDetailEntry.Accepted_Points += entry.PlanEstimate;                
+            }
 
             items[exists][detailID] = existingDetailEntry;
-
-            // and hover details for any corresponding schedule state changes
-            if (entry.ChangeType.indexOf("Completed") != -1)
-                items[exists][hoverID] = existingHoverEntry + " Completed on " + displayDate;
-
 
             // store latest change type
             items[exists].ChangeType = entry.ChangeType;    
@@ -651,11 +659,90 @@ Ext.define('CustomApp', {
                 if (item.state != "" && item.state != null)
                     item.ReleaseScope += "(" + item.State + ")";
             }
-            
         });
+
+        // setup the final summary objects
+        var summary = [];
+        var start = {Name: "Total Start", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
+        var added = {Name: "Total Added", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
+        var removed = {Name: "Total Removed", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
+        var resized = {Name: "Total Resized", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
+        var completed = {Name: "Total Completed", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
+        var accepted = {Name: "Total Accepted", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
+        var net = {Name: "Net", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
+
+        for(i=0; i<iterations.length; i++){
+            var iterationID = "Iteration_" + iterations[i].ID;
+            start[iterationID] = {Count: 0, Points: 0};
+            added[iterationID] = {Count: 0, Points: 0};
+            removed[iterationID] = {Count: 0, Points: 0};
+            resized[iterationID] = {Count: 0, Points: 0};
+            completed[iterationID] = {Count: 0, Points: 0};
+            accepted[iterationID] = {Count: 0, Points: 0};
+            net[iterationID] = {Count: 0, Points: 0};
+        }
+
+        for(i=0;i<items.length;i++){
+            var item = items[i];
+            // for each item we need to trek across each iteraiton marker
+            var detail = item.Detail_Pre;
+            if(detail != null){
+                // we have details, step through and update summary objects
+                added["Iteration_Pre"].Count += detail.Added_Count;
+                added["Iteration_Pre"].Points += detail.Added_Points;
+                removed["Iteration_Pre"].Count += detail.Removed_Count;
+                removed["Iteration_Pre"].Points += detail.Removed_Points;
+                resized["Iteration_Pre"].Count += detail.Resized_Count;
+                resized["Iteration_Pre"].Points += detail.Resized_Points;
+                completed["Iteration_Pre"].Count += detail.Completed_Count;
+                completed["Iteration_Pre"].Points += detail.Completed_Points;
+                accepted["Iteration_Pre"].Count += detail.Accepted_Count;
+                accepted["Iteration_Pre"].Points += detail.Accepted_Points;
+            }            
+            var detail = item.Detail_Post;
+            if(detail != null){
+                // we have details, step through and update summary objects
+                added["Iteration_Post"].Count += detail.Added_Count;
+                added["Iteration_Post"].Points += detail.Added_Points;
+                removed["Iteration_Post"].Count += detail.Removed_Count;
+                removed["Iteration_Post"].Points += detail.Removed_Points;
+                resized["Iteration_Post"].Count += detail.Resized_Count;
+                resized["Iteration_Post"].Points += detail.Resized_Points;
+                completed["Iteration_Post"].Count += detail.Completed_Count;
+                completed["Iteration_Post"].Points += detail.Completed_Points;
+                accepted["Iteration_Post"].Count += detail.Accepted_Count;
+                accepted["Iteration_Post"].Points += detail.Accepted_Points;
+            }      
+            for(j=0;j<this.visibleIterations.length;j++){
+                var iterationID = this.visibleIterations[j].ID;
+                var detail = item["Detail_" + iterationID];
+                if(detail != null){
+                    // we have details, step through and update summary objects
+                    added["Iteration_" + iterationID].Count += detail.Added_Count;
+                    added["Iteration_" + iterationID].Points += detail.Added_Points;
+                    removed["Iteration_" + iterationID].Count += detail.Removed_Count;
+                    removed["Iteration_" + iterationID].Points += detail.Removed_Points;
+                    resized["Iteration_" + iterationID].Count += detail.Resized_Count;
+                    resized["Iteration_" + iterationID].Points += detail.Resized_Points;
+                    completed["Iteration_" + iterationID].Count += detail.Completed_Count;
+                    completed["Iteration_" + iterationID].Points += detail.Completed_Points;
+                    accepted["Iteration_" + iterationID].Count += detail.Accepted_Count;
+                    accepted["Iteration_" + iterationID].Points += detail.Accepted_Points;
+                }
+            }
+        }
+
+        summary.push(start);
+        summary.push(added);
+        summary.push(removed);
+        summary.push(resized);
+        summary.push(completed);
+        summary.push(accepted);
+        summary.push(net);
+
+        this.iteration_change_summaries = summary;
         return items;
     },
-
     _getIdFromSnap: function(snap){
         var type_hierarchy = snap.get('_TypeHierarchy');
         var type = type_hierarchy[type_hierarchy.length - 1 ];
@@ -730,35 +817,9 @@ Ext.define('CustomApp', {
         return change_type;
     },
     _makeGrids: function(changes) {
-        this._makeSummaryGrid();
         this._makeIterationSummaryGrid();
         this._makeDetailGrid(changes);
         return [];
-    },
-    _makeSummaryGrid: function() {
-        this.logger.log("_makeSummaryGrid",this.change_summaries);
-        var summary = this.change_summaries;
-        
-        var data = [
-            { Name: 'Total Added', Count: summary.add_count, Points: summary.add_points },
-            { Name: 'Total Removed', Count: summary.remove_count, Points: summary.remove_points },
-            { Name: 'Net', Count: summary.net_count, Points: summary.net_points }
-        ];
-        
-        var store = Ext.create('Rally.data.custom.Store',{
-            data: data
-        });
-        if ( this.summary_grid ) { this.summary_grid.destroy(); }
-        this.summary_grid = this.down('#change_summary_box').add({
-            xtype:'rallygrid',
-            store:store,
-            showPagingToolbar: false,
-            columnCfgs: [
-                {text:' ',dataIndex:'Name'},
-                {text:'Count',dataIndex:'Count'},
-                {text:'Points',dataIndex:'Points'}
-            ]
-        });
     },
     _makeIterationSummaryGrid: function(){
         this.logger.log("_makeIterationSummaryGrid",this.iteration_change_summaries);
@@ -774,23 +835,20 @@ Ext.define('CustomApp', {
             store:store,
             showPagingToolbar: false,
             columnCfgs: [
-                {text:'Name',dataIndex:'Name',flex:1},
-                {text:'Initial Size', width: 50},                
-                {text:'Current Size', width: 50},
-                {text:'Release Scope'},
-                {text:'State'},
-                {text:'Delta', width: 40},
-                {text:'Pre',dataIndex:'Pre',renderer: this._subObjectPoints},
+                {text:'Name',dataIndex:'Name'},
+                {text:'Pre',dataIndex:'Iteration_Pre',renderer: this._subObjectPoints},
             ],
         };
+
+        var me = this;
         Ext.Array.each(this.visibleIterations, function(iteration){
             var from = Rally.util.DateTime.toIsoString(iteration.StartDate).replace(/T.*$/,"");
             var to = Rally.util.DateTime.toIsoString(iteration.EndDate).replace(/T.*$/,"");
             var colName = iteration.Name;
-            grid.columnCfgs.push({text:colName, dataIndex:iteration.ColumnID});
+            grid.columnCfgs.push({text:colName, dataIndex:iteration.ColumnID, renderer: me._subObjectPoints});
         });
 
-        grid.columnCfgs.push({text:"Post", dataIndex:'Iteration_Post'});
+        grid.columnCfgs.push({text:"Post", dataIndex:'Iteration_Post', renderer: this._subObjectPoints});
 
         if ( this.iteration_summary_grid ) { this.iteration_summary_grid.destroy(); }
         this.iteration_summary_grid = this.down('#iteration_summary_grid').add(grid);
@@ -798,10 +856,11 @@ Ext.define('CustomApp', {
         return [];
     },
     _subObjectCount: function(val) {
-        return val.Count ;
+        return val.Count;
     },
     _subObjectPoints: function(val) {
-        return val.Points ;
+        var html = "<table><tr><td style='text-align:right'>" + val.Count + "</td><td style='text-align:right'>" + val.Points + "</td></tr></table>"
+        return html;
     },    
     _makeDetailGrid: function(changes){
         this.logger.log("_makeDetailGrid",changes);
