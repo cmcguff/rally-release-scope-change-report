@@ -425,7 +425,6 @@ Ext.define('CustomApp', {
             // Display dates
             var change_date = Rally.util.DateTime.toIsoString(Rally.util.DateTime.fromIsoString(base_date)).replace(/T.*$/,"");
             var id = me._getIdFromSnap(snap);
-
             var previous_size = snap.get("_PreviousValues")[me.alternate_pi_size_field];
             var size = snap.get(me.alternate_pi_size_field) || 0;
                                   
@@ -436,6 +435,8 @@ Ext.define('CustomApp', {
             var scheduleState = snap.get('ScheduleState');
             var state = snap.get('State');
             var combinedState = scheduleState;
+
+
 
             if (state != "" && state != null )
                 combinedState += " (" + state + ")";
@@ -478,7 +479,7 @@ Ext.define('CustomApp', {
                     Detail_Post: null,
                     ReleaseScope: releaseScope
                 });
-            }
+            }           
         });
         
         return changes;
@@ -607,23 +608,21 @@ Ext.define('CustomApp', {
             {
                 items[exists][hoverID] = existingHoverEntry + " Removed on " + displayDate;
                 existingDetailEntry.Removed_Count++;
-                existingDetailEntry.Removed_Points += (-1*(entry.PlanEstimate - items[exists].InitialPlanEstimate));                
+                existingDetailEntry.Removed_Points += entry.PlanEstimate; //(-1*(entry.PlanEstimate - items[exists].InitialPlanEstimate));                
             }
             else if (entry.ChangeType.indexOf("Resized") != -1)
             {
-                items[exists][hoverID] = existingHoverEntry + " Resized from " + (entry.PlanEstimate - entry.ChangeValue) + " to " + entry.PlanEstimate + " on " + displayDate;
+                items[exists][hoverID] = existingHoverEntry + " Resized from " + (items[exists].PlanEstimate) + " to " + entry.PlanEstimate + " on " + displayDate;
                 existingDetailEntry.Resized_Count++;
-                existingDetailEntry.Resized_Points += entry.PlanEstimate;                
+                existingDetailEntry.Resized_Points += (entry.PlanEstimate - items[exists].PlanEstimate);                
             }
-
-            // now check schedule changes as well    
-            if (entry.ChangeType.indexOf("Completed") != -1)
+            else if (entry.ChangeType.indexOf("Completed") != -1)
             {
                 items[exists][hoverID] = existingHoverEntry + " Completed on " + displayDate;
                 existingDetailEntry.Completed_Count++;
                 existingDetailEntry.Completed_Points += entry.PlanEstimate;                
             }
-            if (entry.ChangeType.indexOf("Accepted") != -1)
+            else if (entry.ChangeType.indexOf("Accepted") != -1)
             {
                 items[exists][hoverID] = existingHoverEntry + " Accepted on " + displayDate;
                 existingDetailEntry.Accepted_Count++;
@@ -663,13 +662,14 @@ Ext.define('CustomApp', {
 
         // setup the final summary objects
         var summary = [];
-        var start = {Name: "Total Start", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
-        var added = {Name: "Total Added", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
-        var removed = {Name: "Total Removed", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
-        var resized = {Name: "Total Resized", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
-        var completed = {Name: "Total Completed", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
-        var accepted = {Name: "Total Accepted", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
-        var net = {Name: "Net", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}};
+        var start = {Name: "Total Start", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var added = {Name: "Total Added", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var removed = {Name: "Total Removed", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var resized = {Name: "Total Resized", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var completed = {Name: "Total Completed", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var accepted = {Name: "Total Accepted", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var net = {Name: "Iteration Total", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var remain = {Name: "Cumulative Total", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
 
         for(i=0; i<iterations.length; i++){
             var iterationID = "Iteration_" + iterations[i].ID;
@@ -680,6 +680,7 @@ Ext.define('CustomApp', {
             completed[iterationID] = {Count: 0, Points: 0};
             accepted[iterationID] = {Count: 0, Points: 0};
             net[iterationID] = {Count: 0, Points: 0};
+            remain[iterationID] = {Count: 0, Points: 0};
         }
 
         for(i=0;i<items.length;i++){
@@ -698,6 +699,28 @@ Ext.define('CustomApp', {
                 completed["Iteration_Pre"].Points += detail.Completed_Points;
                 accepted["Iteration_Pre"].Count += detail.Accepted_Count;
                 accepted["Iteration_Pre"].Points += detail.Accepted_Points;
+
+                added["Iteration_Total"].Count += detail.Added_Count;
+                added["Iteration_Total"].Points += detail.Added_Points;
+                removed["Iteration_Total"].Count += detail.Removed_Count;
+                removed["Iteration_Total"].Points += detail.Removed_Points;
+                resized["Iteration_Total"].Count += detail.Resized_Count;
+                resized["Iteration_Total"].Points += detail.Resized_Points;
+                completed["Iteration_Total"].Count += detail.Completed_Count;
+                completed["Iteration_Total"].Points += detail.Completed_Points;
+                accepted["Iteration_Total"].Count += detail.Accepted_Count;
+                accepted["Iteration_Total"].Points += detail.Accepted_Points;
+
+                net["Iteration_Pre"].Count += (detail.Added_Count - detail.Removed_Count);
+                net["Iteration_Total"].Count += (detail.Added_Count - detail.Removed_Count);
+                remain["Iteration_Pre"].Count += (detail.Added_Count - detail.Accepted_Count - detail.Removed_Count);
+                remain["Iteration_Total"].Count += (detail.Added_Count - detail.Accepted_Count - detail.Removed_Count);
+
+                net["Iteration_Pre"].Points += (detail.Added_Points - detail.Removed_Points + detail.Resized_Points);
+                net["Iteration_Total"].Points += (detail.Added_Points - detail.Removed_Points + detail.Resized_Points);
+                remain["Iteration_Pre"].Points += (detail.Added_Points - detail.Accepted_Points - detail.Removed_Points + detail.Resized_Points);
+                remain["Iteration_Total"].Points += (detail.Added_Points - detail.Accepted_Points - detail.Removed_Points + detail.Resized_Points);
+
             }            
             var detail = item.Detail_Post;
             if(detail != null){
@@ -712,6 +735,28 @@ Ext.define('CustomApp', {
                 completed["Iteration_Post"].Points += detail.Completed_Points;
                 accepted["Iteration_Post"].Count += detail.Accepted_Count;
                 accepted["Iteration_Post"].Points += detail.Accepted_Points;
+                added["Iteration_Total"].Count += detail.Added_Count;
+                added["Iteration_Total"].Points += detail.Added_Points;
+                removed["Iteration_Total"].Count += detail.Removed_Count;
+                removed["Iteration_Total"].Points += detail.Removed_Points;
+                resized["Iteration_Total"].Count += detail.Resized_Count;
+                resized["Iteration_Total"].Points += detail.Resized_Points;
+                completed["Iteration_Total"].Count += detail.Completed_Count;
+                completed["Iteration_Total"].Points += detail.Completed_Points;
+                accepted["Iteration_Total"].Count += detail.Accepted_Count;
+                accepted["Iteration_Total"].Points += detail.Accepted_Points;    
+
+                net["Iteration_Post"].Count += (detail.Added_Count - detail.Removed_Count);
+                net["Iteration_Total"].Count += (detail.Added_Count - detail.Removed_Count);
+                remain["Iteration_Post"].Count += (detail.Added_Count - detail.Accepted_Count - detail.Removed_Count);
+                remain["Iteration_Total"].Count += (detail.Added_Count - detail.Accepted_Count - detail.Removed_Count);
+
+                net["Iteration_Post"].Points += (detail.Added_Points - detail.Removed_Points + detail.Resized_Points);
+                net["Iteration_Total"].Points += (detail.Added_Points - detail.Removed_Points + detail.Resized_Points);
+                remain["Iteration_Post"].Points += (detail.Added_Points - detail.Accepted_Points - detail.Removed_Points + detail.Resized_Points);
+                remain["Iteration_Total"].Points += (detail.Added_Points - detail.Accepted_Points - detail.Removed_Points + detail.Resized_Points);
+
+
             }      
             for(j=0;j<this.visibleIterations.length;j++){
                 var iterationID = this.visibleIterations[j].ID;
@@ -728,10 +773,48 @@ Ext.define('CustomApp', {
                     completed["Iteration_" + iterationID].Points += detail.Completed_Points;
                     accepted["Iteration_" + iterationID].Count += detail.Accepted_Count;
                     accepted["Iteration_" + iterationID].Points += detail.Accepted_Points;
+                    added["Iteration_Total"].Count += detail.Added_Count;
+                    added["Iteration_Total"].Points += detail.Added_Points;
+                    removed["Iteration_Total"].Count += detail.Removed_Count;
+                    removed["Iteration_Total"].Points += detail.Removed_Points;
+                    resized["Iteration_Total"].Count += detail.Resized_Count;
+                    resized["Iteration_Total"].Points += detail.Resized_Points;
+                    completed["Iteration_Total"].Count += detail.Completed_Count;
+                    completed["Iteration_Total"].Points += detail.Completed_Points;
+                    accepted["Iteration_Total"].Count += detail.Accepted_Count;
+                    accepted["Iteration_Total"].Points += detail.Accepted_Points;      
+
+                    net["Iteration_" + iterationID].Count += (detail.Added_Count - detail.Removed_Count);
+                    net["Iteration_Total"].Count += (detail.Added_Count - detail.Removed_Count);
+                    remain["Iteration_" + iterationID].Count += (detail.Added_Count - detail.Accepted_Count - detail.Removed_Count);
+                    remain["Iteration_Total"].Count += (detail.Added_Count - detail.Accepted_Count - detail.Removed_Count);
+
+                    net["Iteration_" + iterationID].Points += (detail.Added_Points - detail.Removed_Points + detail.Resized_Points);
+                    net["Iteration_Total"].Points += (detail.Added_Points - detail.Removed_Points + detail.Resized_Points);
+                    remain["Iteration_" + iterationID].Points += (detail.Added_Points - detail.Accepted_Points - detail.Removed_Points + detail.Resized_Points);
+                    remain["Iteration_Total"].Points += (detail.Added_Points - detail.Accepted_Points - detail.Removed_Points + detail.Resized_Points);
+
+
                 }
             }
         }
 
+        var cumulative = [];
+        cumulative[0] = "Iteration_Pre";
+        for(i=0;i<this.visibleIterations.length;i++){
+            cumulative.push(this.visibleIterations[i].ColumnID);
+        }
+        cumulative.push("Iteration_Post");
+
+        // update cumulative totals
+        for(i=1; i<cumulative.length; i++){
+            var name = cumulative[i];
+            var last_name = cumulative[i-1];
+            remain[name].Count = remain[last_name].Count + added[name].Count - removed[name].Count - accepted[name].Count;
+            remain[name].Points = remain[last_name].Points + added[name].Points + resized[name].Points - removed[name].Points - accepted[name].Points;
+        }
+
+        // add to grid display
         summary.push(start);
         summary.push(added);
         summary.push(removed);
@@ -739,6 +822,7 @@ Ext.define('CustomApp', {
         summary.push(completed);
         summary.push(accepted);
         summary.push(net);
+        summary.push(remain);
 
         this.iteration_change_summaries = summary;
         return items;
@@ -849,6 +933,7 @@ Ext.define('CustomApp', {
         });
 
         grid.columnCfgs.push({text:"Post", dataIndex:'Iteration_Post', renderer: this._subObjectPoints});
+        grid.columnCfgs.push({text:"Total", dataIndex:'Iteration_Total', renderer: this._subObjectPoints});
 
         if ( this.iteration_summary_grid ) { this.iteration_summary_grid.destroy(); }
         this.iteration_summary_grid = this.down('#iteration_summary_grid').add(grid);
@@ -859,7 +944,7 @@ Ext.define('CustomApp', {
         return val.Count;
     },
     _subObjectPoints: function(val) {
-        var html = "<table><tr><td style='text-align:right'>" + val.Count + "</td><td style='text-align:right'>" + val.Points + "</td></tr></table>"
+        var html = "<div class='summary-wrapper'><div class='summary-left'>" + val.Count + "</div>" + "<div class='summary-right'>" + val.Points + "</div></div>"
         return html;
     },    
     _makeDetailGrid: function(changes){

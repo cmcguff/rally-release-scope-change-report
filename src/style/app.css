@@ -10,3 +10,16 @@
 .x-grid-row-outofscope .x-grid-cell-inner{
 	color: #999;
 }
+
+div.summary-wrapper{
+	width:80%;
+}
+.summary-left, .summary-right{
+	width:30%;
+}
+.summary-left{
+	float:left;
+}
+.summary-right{
+	float:right;
+}
