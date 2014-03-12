@@ -11,6 +11,14 @@
 	color: #999;
 }
 
+.x-grid-row-accepted .x-grid-cell-inner{
+	color: green;
+}
+
+.x-grid-row-notdone .x-grid-cell-inner{
+	color: red;
+}
+
 div.summary-wrapper{
 	width:80%;
 }
