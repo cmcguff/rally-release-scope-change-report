@@ -888,8 +888,6 @@ Ext.define('CustomApp', {
                     net["Iteration_Total"].Points += (detail.Added_Points - detail.Removed_Points + detail.Resized_Points);
                     remain["Iteration_" + iterationID].Points += (detail.Added_Points - detail.Accepted_Points - detail.Removed_Points + detail.Resized_Points);
                     remain["Iteration_Total"].Points += (detail.Added_Points - detail.Accepted_Points - detail.Removed_Points + detail.Resized_Points);
-
-
                 }
             }
         }
@@ -907,6 +905,8 @@ Ext.define('CustomApp', {
             var last_name = cumulative[i-1];
             remain[name].Count = remain[last_name].Count + added[name].Count - removed[name].Count - accepted[name].Count;
             remain[name].Points = remain[last_name].Points + added[name].Points + resized[name].Points - removed[name].Points - accepted[name].Points;
+            start[name].Count = remain[last_name].Count;
+            start[name].Points = remain[last_name].Points;
         }
 
         // add to grid display
