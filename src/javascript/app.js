@@ -1025,7 +1025,13 @@ Ext.define('CustomApp', {
             store:store,
             showPagingToolbar: false,
             columnCfgs: [
-                {text:'Name',dataIndex:'Name'},
+                {text:'',dataIndex:'', width: 60},
+                {text:'Name',dataIndex:'Name', flex: 1},
+                {text:'',dataIndex:'', width: 50},                
+                {text:'',dataIndex:'', width: 50},
+                {text:'', dataIndex: ''},
+                {text:'', dataIndex: ''},
+                {text:'',dataIndex:'', width: 40},                
                 {text:'Pre',dataIndex:'Iteration_Pre',renderer: this._subObjectPoints},
             ],
         };
@@ -1050,7 +1056,8 @@ Ext.define('CustomApp', {
         return val.Count;
     },
     _subObjectPoints: function(val) {
-        var html = "<div class='summary-wrapper'><div class='summary-left'>" + val.Count + "</div>" + "<div class='summary-right'>" + val.Points + "</div></div>"
+        //var html = "<div class='summary-wrapper'><div class='summary-left'>" + val.Count + "</div>" + "<div class='summary-right'>" + val.Points + "</div></div>"
+        var html = "<div class='summary-wrapper'>" + "<div class='summary-center'>" + val.Points + "</div></div>"
         return html;
     },    
     _makeDetailGrid: function(changes){
@@ -1128,6 +1135,8 @@ Ext.define('CustomApp', {
         });
 
         grid.columnCfgs.push({text:"Post", dataIndex:'Iteration_Post'});
+        // added to match number of columns in headers...
+        grid.columnCfgs.push({text:"", dataIndex:''});
 
         if ( this.detail_grid ) { this.detail_grid.destroy(); }
         this.detail_grid = this.down('#daily_box').add(grid);
