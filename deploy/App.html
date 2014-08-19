@@ -3,11 +3,11 @@
 <head>
     <title>Release Scope Change</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Mar 12 2014 16:43:47 GMT+1300 (New Zealand Daylight Time) -->
+    <!--  Build Date: Tue Aug 19 2014 12:50:02 GMT+1200 (New Zealand Standard Time) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Mar 12 2014 16:43:47 GMT+1300 (New Zealand Daylight Time)";
-        var CHECKSUM = 176675052192;
+        var APP_BUILD_DATE = "Tue Aug 19 2014 12:50:02 GMT+1200 (New Zealand Standard Time)";
+        var CHECKSUM = 191499051894;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -1146,8 +1146,6 @@ Ext.define('CustomApp', {
                     net["Iteration_Total"].Points += (detail.Added_Points - detail.Removed_Points + detail.Resized_Points);
                     remain["Iteration_" + iterationID].Points += (detail.Added_Points - detail.Accepted_Points - detail.Removed_Points + detail.Resized_Points);
                     remain["Iteration_Total"].Points += (detail.Added_Points - detail.Accepted_Points - detail.Removed_Points + detail.Resized_Points);
-
-
                 }
             }
         }
@@ -1165,6 +1163,8 @@ Ext.define('CustomApp', {
             var last_name = cumulative[i-1];
             remain[name].Count = remain[last_name].Count + added[name].Count - removed[name].Count - accepted[name].Count;
             remain[name].Points = remain[last_name].Points + added[name].Points + resized[name].Points - removed[name].Points - accepted[name].Points;
+            start[name].Count = remain[last_name].Count;
+            start[name].Points = remain[last_name].Points;
         }
 
         // add to grid display
@@ -1179,8 +1179,9 @@ Ext.define('CustomApp', {
             summary.push(defined);
         if (this.ignore_schedule_states.indexOf("In-Progress") == -1)
             summary.push(inprogress);
-        if (this.ignore_schedule_states.indexOf("Completed") == -1)
-            summary.push(completed);
+        // CM hide completed from top view
+        // if (this.ignore_schedule_states.indexOf("Completed") == -1)
+        //    summary.push(completed);
         if (this.ignore_schedule_states.indexOf("Accepted") == -1)
             summary.push(accepted);
         if (this.ignore_schedule_states.indexOf("Released") == -1)
@@ -1283,7 +1284,13 @@ Ext.define('CustomApp', {
             store:store,
             showPagingToolbar: false,
             columnCfgs: [
-                {text:'Name',dataIndex:'Name'},
+                {text:'',dataIndex:'', width: 60},
+                {text:'Name',dataIndex:'Name', flex: 1},
+                {text:'',dataIndex:'', width: 50},                
+                {text:'',dataIndex:'', width: 50},
+                {text:'', dataIndex: ''},
+                {text:'', dataIndex: ''},
+                {text:'',dataIndex:'', width: 40},                
                 {text:'Pre',dataIndex:'Iteration_Pre',renderer: this._subObjectPoints},
             ],
         };
@@ -1308,7 +1315,8 @@ Ext.define('CustomApp', {
         return val.Count;
     },
     _subObjectPoints: function(val) {
-        var html = "<div class='summary-wrapper'><div class='summary-left'>" + val.Count + "</div>" + "<div class='summary-right'>" + val.Points + "</div></div>"
+        //var html = "<div class='summary-wrapper'><div class='summary-left'>" + val.Count + "</div>" + "<div class='summary-right'>" + val.Points + "</div></div>"
+        var html = "<div class='summary-wrapper'>" + "<div class='summary-center'>" + val.Points + "</div></div>"
         return html;
     },    
     _makeDetailGrid: function(changes){
@@ -1322,6 +1330,7 @@ Ext.define('CustomApp', {
                 CM remove grouping for now 
                 groupField: 'ChangeDate', 
             */
+            /*
             sorters: [
                 { 
                     property: 'ChangeDate',
@@ -1332,6 +1341,76 @@ Ext.define('CustomApp', {
                     direction: 'DESC'
                 }
             ]
+            */
+
+            sorters: [{
+                sorterFn: function(o1, o2){
+                    var getRank = function(o){
+                        var rank = 0;
+                        var scope = o.get('ReleaseScope');
+                        var size = o.get('PlanEstimate');
+                        var state = o.get('ScheduleState');
+
+                        if (scope === 'In Scope')
+                        {
+                            rank = 10; // in scope
+                            if (size == 0) // unsized, now at risk
+                                if (state === 'Released' || state === 'Accepted') // unsized but work already done
+                                    rank = 10;
+                                else // unsized and work NOT done
+                                    rank = 20;
+                        }
+                        else if (scope === 'In Scope' && size == 0)
+                            rank = 20; // in scope but not sized - AT RISK!   
+                        else // out of scope
+                            rank = 30;
+
+                        
+                        if (state === 'Released') 
+                            rank += 1;
+                        if (state === 'Accepted') 
+                            rank += 2;
+                        else if (state === 'Completed') 
+                            rank += 3;
+                        else if (state === 'Defined') 
+                            rank += 4;
+                        else if (state === 'Backlog') 
+                            rank += 5;
+                        return rank;
+                    },
+                    rank1 = getRank(o1),
+                    rank2 = getRank(o2);
+
+                    if (rank1 === rank2) {
+                        return 0;
+                    }
+
+                    return rank1 < rank2 ? -1 : 1;
+                }
+            },
+                { 
+                    property: 'ChangeDate',
+                    direction: 'ASC'
+                },
+                {
+                    property: 'timestamp',
+                    direction: 'ASC'
+                }
+            ],
+
+/*
+            sorters: [
+                { 
+                    property: 'ReleaseScope',
+                    direction: 'ASC'
+                },
+                {
+                    property: 'ScheduleState',
+                    direction: 'DESC'
+                }
+            ]
+*/
+
         });
         
         var id_renderer = this._renderID;
@@ -1365,10 +1444,16 @@ Ext.define('CustomApp', {
                 beforerender: function(cmp) {
                     cmp.view.getRowClass = function(record, index, rowParams, store) {
                         var css = "";
-                        if (record.get('ReleaseScope') == "Out of Scope")
+                        var scope = record.get('ReleaseScope');
+                        var state = record.get('CombinedState');
+                        var size = record.get('PlanEstimate');
+
+                        if (scope == "Out of Scope")
                             css = 'x-grid-row-outofscope';
-                        else if (record.get('CombinedState').indexOf("Accepted") != -1)
+                        else if (state.indexOf('Accepted') != -1 || state.indexOf('Released') != -1)
                             css = 'x-grid-row-accepted';
+                        else if (size == 0)
+                            css = 'x-grid-row-atrisk';
                         else
                             css = 'x-grid-row-notdone';
                         return css;
@@ -1386,6 +1471,8 @@ Ext.define('CustomApp', {
         });
 
         grid.columnCfgs.push({text:"Post", dataIndex:'Iteration_Post'});
+        // added to match number of columns in headers...
+        grid.columnCfgs.push({text:"", dataIndex:''});
 
         if ( this.detail_grid ) { this.detail_grid.destroy(); }
         this.detail_grid = this.down('#daily_box').add(grid);
@@ -1511,6 +1598,10 @@ Ext.define('CustomApp', {
 }
 
 .x-grid-row-notdone .x-grid-cell-inner{
+	color: black;
+}
+
+.x-grid-row-atrisk .x-grid-cell-inner{
 	color: red;
 }
 
