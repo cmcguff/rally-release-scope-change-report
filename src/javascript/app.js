@@ -1186,10 +1186,16 @@ Ext.define('CustomApp', {
                 beforerender: function(cmp) {
                     cmp.view.getRowClass = function(record, index, rowParams, store) {
                         var css = "";
-                        if (record.get('ReleaseScope') == "Out of Scope")
+                        var scope = record.get('ReleaseScope');
+                        var state = record.get('CombinedState');
+                        var size = record.get('PlanEstimate');
+
+                        if (scope == "Out of Scope")
                             css = 'x-grid-row-outofscope';
-                        else if (record.get('CombinedState').indexOf("Accepted") != -1)
+                        else if (state.indexOf('Accepted') != -1 || state.indexOf('Released') != -1)
                             css = 'x-grid-row-accepted';
+                        else if (size == 0)
+                            css = 'x-grid-row-atrisk';
                         else
                             css = 'x-grid-row-notdone';
                         return css;

@@ -16,6 +16,10 @@
 }
 
 .x-grid-row-notdone .x-grid-cell-inner{
+	color: black;
+}
+
+.x-grid-row-atrisk .x-grid-cell-inner{
 	color: red;
 }
 
