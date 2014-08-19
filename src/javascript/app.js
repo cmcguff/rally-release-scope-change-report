@@ -921,8 +921,9 @@ Ext.define('CustomApp', {
             summary.push(defined);
         if (this.ignore_schedule_states.indexOf("In-Progress") == -1)
             summary.push(inprogress);
-        if (this.ignore_schedule_states.indexOf("Completed") == -1)
-            summary.push(completed);
+        // CM hide completed from top view
+        // if (this.ignore_schedule_states.indexOf("Completed") == -1)
+        //    summary.push(completed);
         if (this.ignore_schedule_states.indexOf("Accepted") == -1)
             summary.push(accepted);
         if (this.ignore_schedule_states.indexOf("Released") == -1)
@@ -1071,6 +1072,7 @@ Ext.define('CustomApp', {
                 CM remove grouping for now 
                 groupField: 'ChangeDate', 
             */
+            /*
             sorters: [
                 { 
                     property: 'ChangeDate',
@@ -1081,6 +1083,18 @@ Ext.define('CustomApp', {
                     direction: 'DESC'
                 }
             ]
+            */
+            sorters: [
+                { 
+                    property: 'ReleaseScope',
+                    direction: 'ASC'
+                },
+                {
+                    property: 'ScheduleState',
+                    direction: 'DESC'
+                }
+            ]
+
         });
         
         var id_renderer = this._renderID;
