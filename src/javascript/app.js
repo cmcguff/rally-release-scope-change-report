@@ -694,18 +694,18 @@ Ext.define('CustomApp', {
 
         // setup the final summary objects
         var summary = [];
-        var start = {Name: "Total Start", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
-        var added = {Name: "Total Added", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
-        var removed = {Name: "Total Removed", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
-        var resized = {Name: "Total Resized", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var start = {Name: "Release Scope at Start", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var added = {Name: "Release Scope Added", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var removed = {Name: "Release Scope Removed", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var resized = {Name: "Release Scope Resized", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
         var backlog = {Name: "Total Backlog", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
         var defined = {Name: "Total Defined", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
         var inprogress = {Name: "Total In-Progress", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
         var completed = {Name: "Total Completed", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
-        var accepted = {Name: "Total Accepted", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var accepted = {Name: "Release Scope Accepted", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
         var released = {Name: "Total Released", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
-        var net = {Name: "Iteration Total", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
-        var remain = {Name: "Cumulative Total", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var net = {Name: "Release Net Scope", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var remain = {Name: "Release Scope Remaining", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
 
         for(i=0; i<iterations.length; i++){
             var iterationID = "Iteration_" + iterations[i].ID;
@@ -924,11 +924,14 @@ Ext.define('CustomApp', {
         // CM hide completed from top view
         // if (this.ignore_schedule_states.indexOf("Completed") == -1)
         //    summary.push(completed);
+        
+        summary.push(net);
+
         if (this.ignore_schedule_states.indexOf("Accepted") == -1)
             summary.push(accepted);
         if (this.ignore_schedule_states.indexOf("Released") == -1)
             summary.push(released);
-        summary.push(net);
+        
         summary.push(remain);
 
         this.iteration_change_summaries = summary;
