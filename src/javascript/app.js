@@ -1084,6 +1084,63 @@ Ext.define('CustomApp', {
                 }
             ]
             */
+
+            sorters: [{
+                sorterFn: function(o1, o2){
+                    var getRank = function(o){
+                        var rank = 0;
+                        var scope = o.get('ReleaseScope');
+                        var size = o.get('PlanEstimate');
+                        var state = o.get('ScheduleState');
+
+                        if (scope === 'In Scope')
+                        {
+                            rank = 10; // in scope
+                            if (size == 0) // unsized, now at risk
+                                if (state === 'Released' || state === 'Accepted') // unsized but work already done
+                                    rank = 10;
+                                else // unsized and work NOT done
+                                    rank = 20;
+                        }
+                        else if (scope === 'In Scope' && size == 0)
+                            rank = 20; // in scope but not sized - AT RISK!   
+                        else // out of scope
+                            rank = 30;
+
+                        
+                        if (state === 'Released') 
+                            rank += 1;
+                        if (state === 'Accepted') 
+                            rank += 2;
+                        else if (state === 'Completed') 
+                            rank += 3;
+                        else if (state === 'Defined') 
+                            rank += 4;
+                        else if (state === 'Backlog') 
+                            rank += 5;
+                        return rank;
+                    },
+                    rank1 = getRank(o1),
+                    rank2 = getRank(o2);
+
+                    if (rank1 === rank2) {
+                        return 0;
+                    }
+
+                    return rank1 < rank2 ? -1 : 1;
+                }
+            },
+                { 
+                    property: 'ChangeDate',
+                    direction: 'ASC'
+                },
+                {
+                    property: 'timestamp',
+                    direction: 'ASC'
+                }
+            ],
+
+/*
             sorters: [
                 { 
                     property: 'ReleaseScope',
@@ -1094,6 +1151,7 @@ Ext.define('CustomApp', {
                     direction: 'DESC'
                 }
             ]
+*/
 
         });
         
