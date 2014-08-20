@@ -40,6 +40,7 @@ Ext.define('CustomApp', {
             scope: this,
             success: function(throw_away) {
                 this._addReleaseBox();
+                this._addDefectCheckBox();
             },
             failure: function(error) {
                 alert(error);
@@ -170,6 +171,32 @@ Ext.define('CustomApp', {
             }
         });
     },
+    _addDefectCheckBox: function() {
+        this.down('#options_box').add({
+            xtype: 'rallycheckboxfield',
+            fieldLabel: 'Include Defects',
+            value: true,
+            listeners: {
+                scope: this,
+                change: function(cb, newValue, oldValue, eOpts) {
+                    this.logger.log("Defects Changed From ", oldValue, " to ", newValue);
+                    if(newValue){
+                        this.show_types.push('Defect');
+                    } else {
+                        var index = this.show_types.indexOf("Defect");
+                        if (index > -1) {
+                            this.show_types.splice(index, 1);
+                        }
+                    }
+                    this.setLoading();
+                    this.down('#iteration_summary_grid').removeAll();
+                    this.down('#daily_box').removeAll();
+                    var rb = this.down('#release_selector_box').getComponent(0);
+                    this._getDailySummaries(rb.getRecord());
+                }
+            }
+        });
+    },    
     _getReleaseSummary: function(release) {
         var message_wrapper = { msg: "" };
         var today = new Date();
