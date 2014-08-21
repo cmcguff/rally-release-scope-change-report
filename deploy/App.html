@@ -3,11 +3,11 @@
 <head>
     <title>Release Scope Change</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 21 2014 15:51:02 GMT+1200 (New Zealand Standard Time) -->
+    <!--  Build Date: Thu Aug 21 2014 16:29:56 GMT+1200 (New Zealand Standard Time) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 21 2014 15:51:02 GMT+1200 (New Zealand Standard Time)";
-        var CHECKSUM = 206361732773;
+        var APP_BUILD_DATE = "Thu Aug 21 2014 16:29:56 GMT+1200 (New Zealand Standard Time)";
+        var CHECKSUM = 206893545809;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -957,7 +957,8 @@ Ext.define('CustomApp', {
             items[exists].CombinedState = entry.CombinedState;
             items[exists].State = entry.State;
             items[exists].ScheduleState = entry.ScheduleState;
-
+            // and the latest name
+            items[exists].Name = entry.Name;    
             // update iteraiton level plan estimates
             items[exists][estID] = entry.PlanEstimate;   
 
@@ -1204,7 +1205,7 @@ Ext.define('CustomApp', {
         }
 
         // set iteration ideals
-        var ideal = net["Iteration_Total"].Points / this.visibleIterations.length;
+        var ideal = Math.round(net["Iteration_Total"].Points / this.visibleIterations.length);
 
         // set iteration level summaries
         var total_planned = 0;

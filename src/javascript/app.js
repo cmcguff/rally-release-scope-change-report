@@ -699,7 +699,8 @@ Ext.define('CustomApp', {
             items[exists].CombinedState = entry.CombinedState;
             items[exists].State = entry.State;
             items[exists].ScheduleState = entry.ScheduleState;
-
+            // and the latest name
+            items[exists].Name = entry.Name;    
             // update iteraiton level plan estimates
             items[exists][estID] = entry.PlanEstimate;   
 
@@ -946,7 +947,7 @@ Ext.define('CustomApp', {
         }
 
         // set iteration ideals
-        var ideal = net["Iteration_Total"].Points / this.visibleIterations.length;
+        var ideal = Math.round(net["Iteration_Total"].Points / this.visibleIterations.length);
 
         // set iteration level summaries
         var total_planned = 0;
