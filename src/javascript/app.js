@@ -738,6 +738,7 @@ Ext.define('CustomApp', {
 
         // added iteration level summary objects
         var it_planned = {Name: "Iteration Points Planned", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+        var it_ideal = {Name: "Iteration Points Ideal", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
 
         for(i=0; i<iterations.length; i++){
             var iterationID = "Iteration_" + iterations[i].ID;
@@ -755,6 +756,7 @@ Ext.define('CustomApp', {
             remain[iterationID] = {Count: 0, Points: 0};
             // iteration summaries as well
             it_planned[iterationID] = {Count: 0, Points: 0};
+            it_ideal[iterationID] = {Count: 0, Points: 0};
         }
 
         for(i=0;i<items.length;i++){
@@ -943,14 +945,20 @@ Ext.define('CustomApp', {
             start[name].Points = remain[last_name].Points;
         }
 
+        // set iteration ideals
+        var ideal = net["Iteration_Total"].Points / this.visibleIterations.length;
+
         // set iteration level summaries
         var total_planned = 0;
         for(i=0;i<this.visibleIterations.length;i++){
             key = this.visibleIterations[i].ColumnID;
+            // planned
             it_planned[key].Points = this.visibleIterations[i].PlannedVelocity;
             total_planned += this.visibleIterations[i].PlannedVelocity;
+            // ideal
+            it_ideal[key].Points = ideal;
         }
-        it_planned["Iteration_Total"].Points = total_planned;
+        it_planned["Iteration_Total"].Points = total_planned;        
 
         // add to grid display
         summary.push(start);
@@ -977,6 +985,7 @@ Ext.define('CustomApp', {
         
         summary.push(remain);
         summary.push(it_planned);
+        summary.push(it_ideal);
 
         this.iteration_change_summaries = summary;
         return items;
