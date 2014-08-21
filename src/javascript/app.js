@@ -113,7 +113,7 @@ Ext.define('CustomApp', {
         Ext.create('Rally.data.wsapi.Store',{
             model:'Iteration',
             autoLoad: true,
-            fetch: ['ObjectID', 'Name', 'StartDate', 'EndDate'],
+            fetch: ['ObjectID', 'Name', 'StartDate', 'EndDate', 'PlannedVelocity'],
             sorters: [
                 {property: 'EndDate', direction: 'ASC'}
             ],            
@@ -134,7 +134,8 @@ Ext.define('CustomApp', {
                             var startDate = record.get('StartDate');
                             var endDate = record.get('EndDate');
                             var include = false;
-                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include, ColumnID: columnID, EstimateID: estimateID, HoverID: hoverID, DetailID: detailID});    
+                            var plannedVelocity = record.get('PlannedVelocity');
+                            iterations.push({ID: id, Name: name, StartDate: startDate, EndDate: endDate, Include: include, ColumnID: columnID, EstimateID: estimateID, HoverID: hoverID, DetailID: detailID, PlannedVelocity: plannedVelocity});    
                             console.info('ID: ', id, 
                                 '  Name: ', name,  
                                 '  StartDate: ', startDate,                           
@@ -143,7 +144,8 @@ Ext.define('CustomApp', {
                                 '  ColumnID: ', columnID,
                                 '  EstimateID: ', estimateID,
                                 '  HoverID: ', hoverID,
-                                '  DetailID: ', detailID);
+                                '  DetailID: ', detailID,
+                                '  PlannedVelocity: ', plannedVelocity);
                         });
                         this.iterations = iterations;
                         deferred.resolve([]);
@@ -734,6 +736,9 @@ Ext.define('CustomApp', {
         var net = {Name: "Release Total Net Scope", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
         var remain = {Name: "Release Scope Remaining", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
 
+        // added iteration level summary objects
+        var it_planned = {Name: "Iteration Points Planned", Iteration_Pre: {Count: 0, Points: 0}, Iteration_Post: {Count: 0, Points: 0}, Iteration_Total: {Count: 0, Points: 0}};
+
         for(i=0; i<iterations.length; i++){
             var iterationID = "Iteration_" + iterations[i].ID;
             start[iterationID] = {Count: 0, Points: 0};
@@ -748,6 +753,8 @@ Ext.define('CustomApp', {
             released[iterationID] = {Count: 0, Points: 0};
             net[iterationID] = {Count: 0, Points: 0};
             remain[iterationID] = {Count: 0, Points: 0};
+            // iteration summaries as well
+            it_planned[iterationID] = {Count: 0, Points: 0};
         }
 
         for(i=0;i<items.length;i++){
@@ -936,6 +943,15 @@ Ext.define('CustomApp', {
             start[name].Points = remain[last_name].Points;
         }
 
+        // set iteration level summaries
+        var total_planned = 0;
+        for(i=0;i<this.visibleIterations.length;i++){
+            key = this.visibleIterations[i].ColumnID;
+            it_planned[key].Points = this.visibleIterations[i].PlannedVelocity;
+            total_planned += this.visibleIterations[i].PlannedVelocity;
+        }
+        it_planned["Iteration_Total"].Points = total_planned;
+
         // add to grid display
         summary.push(start);
         summary.push(added);
@@ -960,6 +976,7 @@ Ext.define('CustomApp', {
             summary.push(released);
         
         summary.push(remain);
+        summary.push(it_planned);
 
         this.iteration_change_summaries = summary;
         return items;
